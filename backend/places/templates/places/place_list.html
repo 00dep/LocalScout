@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Explore Places | LocalScout{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    
+    <!-- Page Header & Search Bar -->
+    <div class="mb-10 text-center space-y-4">
+        <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Explore Local Spots</h1>
+        <p class="text-slate-600 text-xs sm:text-sm max-w-xl mx-auto">
+            Discover verified cafes, parks, restaurants, and hidden gems recommended by the community.
+        </p>
+
+        <!-- Search & Filter Form (Fully Responsive with min-w-0 fix) -->
+        <form method="GET" action="{% url 'place_list' %}" class="max-w-2xl mx-auto pt-4">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 bg-white border border-slate-200 rounded-2xl shadow-md">
+                <div class="relative flex-grow min-w-0 w-full">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search by name, category, or location..." class="w-full min-w-0 pl-11 pr-4 py-2.5 text-xs sm:text-sm text-slate-900 bg-transparent focus:outline-none">
+                </div>
+                <button type="submit" class="w-full sm:w-auto px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition shadow-sm shrink-0">
+                    Search
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Category Filter Badges -->
+    {% if categories %}
+    <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-8 scrollbar-none">
+        <a href="{% url 'place_list' %}" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition {% if not request.GET.category %}bg-orange-500 text-white shadow-md{% else %}bg-white border border-slate-200 text-slate-700 hover:border-orange-400{% endif %}">
+            All Categories
+        </a>
+        {% for cat in categories %}
+        <a href="{% url 'place_list' %}?category={{ cat.id }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition {% if request.GET.category == cat.id|stringformat:"s" %}bg-orange-500 text-white shadow-md{% else %}bg-white border border-slate-200 text-slate-700 hover:border-orange-400{% endif %}">
+            {{ cat.name }}
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Places Grid (1 col on mobile, 2 on tablet, 3 on desktop) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for place in places %}
+        <article class="bg-white rounded-3xl border border-slate-200 shadow-xs hover:shadow-xl hover:border-orange-400 transition-all duration-300 flex flex-col overflow-hidden group">
+            
+            <!-- Place Image Container -->
+            <div class="relative h-52 w-full bg-slate-100 overflow-hidden">
+                {% if place.image %}
+                    <img src="{{ place.image.url }}" alt="{{ place.name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-4xl text-slate-400">📍</div>
+                {% endif %}
+                
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-transparent"></div>
+
+                <!-- Rating Badge -->
+                {% if place.rating %}
+                <div class="absolute top-3 right-3 px-2.5 py-1 bg-white/90 backdrop-blur-md rounded-xl text-xs font-extrabold text-slate-900 border border-slate-200 shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-star text-amber-500"></i> {{ place.rating }}
+                </div>
+                {% endif %}
+
+                <!-- Category Badge -->
+                <span class="absolute bottom-3 left-3 text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg bg-orange-500 text-white shadow-sm">
+                    {{ place.category.name|default:"Spot" }}
+                </span>
+            </div>
+
+            <!-- Content Container -->
+            <div class="p-6 flex flex-col flex-grow justify-between space-y-4">
+                <div class="space-y-1.5">
+                    <h3 class="text-base font-extrabold text-slate-900 group-hover:text-orange-600 transition line-clamp-1 break-words">{{ place.name }}</h3>
+                    <p class="text-xs text-slate-500 flex items-center gap-1.5 break-words">
+                        <i class="fa-solid fa-location-dot text-slate-400 shrink-0"></i> {{ place.address|default:"Location not specified" }}
+                    </p>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-600">{{ place.get_price_range_display|default:"Affordable" }}</span>
+                    <a href="{% url 'place_detail' place.pk %}" class="px-4 py-2 bg-slate-900 hover:bg-orange-500 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                        View Details
+                    </a>
+                </div>
+            </div>
+        </article>
+        {% empty %}
+        <div class="col-span-full py-16 text-center space-y-3 bg-white rounded-3xl border border-slate-200">
+            <div class="text-4xl">🔍</div>
+            <h3 class="text-base font-extrabold text-slate-800">No places found</h3>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto">We couldn't find any places matching your criteria. Try searching with different keywords or categories.</p>
+            <div class="pt-2">
+                <a href="{% url 'place_list' %}" class="inline-block px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition">
+                    Reset Filters
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

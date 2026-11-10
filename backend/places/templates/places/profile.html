@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Profile | LocalScout{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
+    
+    <!-- User Profile Card -->
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row items-center gap-6">
+        <div class="w-24 h-24 rounded-full bg-orange-100 flex items-center justify-center text-3xl font-black text-orange-600 shrink-0">
+            {{ request.user.username.0|upper }}
+        </div>
+        <div class="space-y-1 text-center sm:text-left">
+            <span class="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-black uppercase rounded-xl">
+                {% if user_profile.role %}{{ user_profile.role }}{% else %}Community Member{% endif %}
+            </span>
+            <h1 class="text-2xl font-black text-slate-900">{{ request.user.username }}</h1>
+            <p class="text-xs sm:text-sm text-slate-600 font-medium flex items-center justify-center sm:justify-start gap-2">
+                <i class="fa-solid fa-envelope text-orange-500"></i> {{ request.user.email|default:"Email not provided" }}
+            </p>
+            <p class="text-[11px] text-slate-400">Member since: {{ request.user.date_joined|date:"F Y" }}</p>
+        </div>
+    </div>
+
+    <!-- User Added Spots Section -->
+    <div class="space-y-4">
+        <h2 class="text-xl font-black text-slate-900">{{ request.user.username }}'s Added Spots <span class="text-xs px-2.5 py-1 bg-slate-100 rounded-full text-slate-600">{{ user_stores.count }}</span></h2>
+
+        {% if user_stores %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for store in user_stores %}
+            <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between">
+                <div class="relative h-48 w-full bg-slate-100">
+                    {% if store.image %}
+                        <img src="{{ store.image.url }}" alt="{{ store.name }}" class="w-full h-full object-cover">
+                    {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-3xl text-slate-400">📍</div>
+                    {% endif %}
+                    <span class="absolute top-3 left-3 px-2.5 py-1 {% if store.is_approved %}bg-emerald-500{% else %}bg-amber-500{% endif %} text-white text-[10px] font-black uppercase rounded-lg">
+                        {% if store.is_approved %}Approved{% else %}Pending Approval{% endif %}
+                    </span>
+                </div>
+                
+                <div class="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                    <div class="space-y-1">
+                        <h3 class="text-base font-black text-slate-900">{{ store.name }}</h3>
+                        <p class="text-xs text-slate-600 flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-orange-500"></i> {{ store.address|truncatechars:35 }}
+                        </p>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
+                        <a href="{% url 'place_detail' store.pk %}" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-center text-xs font-bold rounded-xl transition">
+                            View
+                        </a>
+                        <a href="{% url 'edit_place' store.pk %}" class="flex-1 py-2 bg-orange-50 hover:bg-orange-100 text-orange-600 text-center text-xs font-bold rounded-xl transition">
+                            Edit Store
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3 shadow-sm">
+            <div class="text-4xl">🏜️</div>
+            <h3 class="text-base font-black text-slate-900">No spots added yet</h3>
+            <p class="text-xs text-slate-500">You haven't published any spots yet. Add your first local spot now!</p>
+            <div>
+                <a href="{% url 'add_place' %}" class="inline-block mt-2 px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition shadow-sm">
+                    Add New Spot
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

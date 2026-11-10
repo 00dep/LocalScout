@@ -1,0 +1,132 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LocalScout - Discover Local Gems{% endblock %}</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2.0">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-900 flex flex-col min-h-screen antialiased selection:bg-orange-500 selection:text-white font-['Plus_Jakarta_Sans',sans-serif]">
+
+    <!-- Unified Navbar Section (Desktop & Mobile combined without duplication) -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Brand Logo -->
+            <a href="{% url 'home' %}" class="flex items-center gap-2 text-slate-900 font-extrabold text-lg">
+                <span class="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center text-sm shadow-sm">
+                    <i class="fa-solid fa-compass" aria-hidden="true"></i>
+                </span>
+                <span>Local<span class="text-orange-500">Scout</span></span>
+            </a>
+
+            <!-- Desktop Navigation Links -->
+            <nav class="hidden md:flex items-center gap-2 text-xs font-bold text-slate-600">
+                <a href="{% url 'home' %}" class="px-3 py-2 rounded-xl transition {% if request.path == '/' %}bg-orange-50 text-orange-600{% else %}hover:text-orange-500 hover:bg-slate-50{% endif %}">Home</a>
+                <a href="{% url 'place_list' %}" class="px-3 py-2 rounded-xl transition {% if request.path == '/places/' or '/places' in request.path and request.path != '/places/add/' %}bg-orange-50 text-orange-600{% else %}hover:text-orange-500 hover:bg-slate-50{% endif %}">Explore</a>
+                
+                {% if user.is_authenticated %}
+                    <a href="{% url 'wishlist' %}" class="px-3 py-2 rounded-xl transition {% if request.path == '/wishlist/' %}bg-orange-50 text-orange-600{% else %}hover:text-orange-500 hover:bg-slate-50{% endif %}">Wishlist</a>
+                    <a href="{% url 'add_place' %}" class="px-3 py-2 rounded-xl transition {% if request.path == '/places/add/' %}bg-orange-50 text-orange-600{% else %}hover:text-orange-500 hover:bg-slate-50{% endif %}">Add Place</a>
+                    <a href="{% url 'profile' %}" class="px-3 py-2 rounded-xl transition {% if request.path == '/profile/' %}bg-orange-50 text-orange-600{% else %}hover:text-orange-500 hover:bg-slate-50{% endif %}">Profile</a>
+                    
+                    <!-- Secure Logout POST Form -->
+                    <form action="{% url 'logout' %}" method="POST" class="inline ml-1">
+                        {% csrf_token %}
+                        <button type="submit" class="px-3.5 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 rounded-xl transition text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-right-from-bracket text-[10px]"></i> Logout
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="px-3.5 py-2 rounded-xl hover:text-orange-500 transition">Login</a>
+                    <a href="{% url 'signup' %}" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-xs transition">Sign Up</a>
+                {% endif %}
+            </nav>
+
+            <!-- Mobile Menu Toggle Button with Dynamic Icon Toggle -->
+            <button type="button" aria-label="Toggle navigation menu" aria-expanded="false" id="mobile-menu-btn" class="md:hidden p-2 rounded-xl text-slate-600 hover:text-orange-500 hover:bg-slate-100 transition">
+                <i id="menu-open-icon" class="fa-solid fa-bars text-xl block" aria-hidden="true"></i>
+                <i id="menu-close-icon" class="fa-solid fa-xmark text-xl hidden" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Menu Drawer (Controlled via JS, matching desktop links) -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-2 text-xs font-bold shadow-xl">
+            <a href="{% url 'home' %}" class="block px-3 py-2.5 rounded-xl {% if request.path == '/' %}bg-orange-50 text-orange-600{% else %}text-slate-700 hover:bg-slate-50{% endif %}">Home</a>
+            <a href="{% url 'place_list' %}" class="block px-3 py-2.5 rounded-xl {% if request.path == '/places/' or '/places' in request.path and request.path != '/places/add/' %}bg-orange-50 text-orange-600{% else %}text-slate-700 hover:bg-slate-50{% endif %}">Explore Places</a>
+            
+            {% if user.is_authenticated %}
+                <a href="{% url 'wishlist' %}" class="block px-3 py-2.5 rounded-xl {% if request.path == '/wishlist/' %}bg-orange-50 text-orange-600{% else %}text-slate-700 hover:bg-slate-50{% endif %}">My Wishlist</a>
+                <a href="{% url 'add_place' %}" class="block px-3 py-2.5 rounded-xl {% if request.path == '/places/add/' %}bg-orange-50 text-orange-600{% else %}text-slate-700 hover:bg-slate-50{% endif %}">Add Place</a>
+                <a href="{% url 'profile' %}" class="block px-3 py-2.5 rounded-xl {% if request.path == '/profile/' %}bg-orange-50 text-orange-600{% else %}text-slate-700 hover:bg-slate-50{% endif %}">Profile</a>
+                
+                <div class="pt-2 border-t border-slate-100">
+                    <form action="{% url 'logout' %}" method="POST" class="w-full">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full text-left px-3 py-2.5 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition flex items-center gap-2">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="pt-2 border-t border-slate-100 flex flex-col gap-2">
+                    <a href="{% url 'login' %}" class="block text-center px-4 py-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Login</a>
+                    <a href="{% url 'signup' %}" class="block text-center px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl shadow-xs transition">Sign Up</a>
+                </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow">
+        {% if messages %}
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 space-y-2" role="status">
+            {% for message in messages %}
+            <div class="rounded-xl border px-4 py-3 text-sm font-semibold {% if message.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-700{% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-700{% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer Component -->
+    {% include 'footer.html' %}
+
+    <!-- Enhanced JavaScript for Mobile Menu State & Toggle -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const btn = document.getElementById('mobile-menu-btn');
+            const menu = document.getElementById('mobile-menu');
+            const openIcon = document.getElementById('menu-open-icon');
+            const closeIcon = document.getElementById('menu-close-icon');
+
+            if (btn && menu) {
+                btn.addEventListener('click', () => {
+                    const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+                    btn.setAttribute('aria-expanded', !isExpanded);
+                    
+                    // Toggle visibility of menu
+                    menu.classList.toggle('hidden');
+                    
+                    // Toggle hamburger and close (X) icons smoothly
+                    openIcon.classList.toggle('hidden');
+                    closeIcon.classList.toggle('hidden');
+                });
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="
+    min-height: calc(100vh - 150px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+">
+    <div style="
+        max-width: 500px;
+        width: 100%;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 20px;
+        padding: 40px 32px;
+        text-align: center;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        color: white;
+    ">
+        <!-- Animated Icon -->
+        <div style="font-size: 60px; margin-bottom: 20px; animation: pulse 2s infinite;">
+            ⏳
+        </div>
+
+        <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 12px; color: #f8fafc;">
+            Store Submission Received!
+        </h2>
+
+        <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
+            Your request to create a store has been successfully submitted. It is currently undergoing review by our team.
+        </p>
+
+        <!-- Waiting Time Card -->
+        <div style="
+            background: #0f172a;
+            border: 1px dashed #a855f7;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 30px;
+        ">
+            <span style="display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px;">
+                Estimated Approval Time
+            </span>
+            <strong style="font-size: 18px; color: #c084fc;">
+                📅 1 to 2 Business Days
+            </strong>
+        </div>
+
+        <a href="{% url 'home' %}" style="
+            display: inline-block;
+            background: linear-gradient(135deg, #a855f7 0%, #6d28d9 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 15px;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+        ">
+            Back to Home
+        </a>
+    </div>
+</div>
+
+<style>
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+</style>
+{% endblock %}

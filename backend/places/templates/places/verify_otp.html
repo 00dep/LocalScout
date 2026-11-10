@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+    <div class="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl text-center">
+        
+        <div class="w-16 h-16 bg-purple-900/40 text-purple-400 text-3xl flex items-center justify-center rounded-2xl mx-auto mb-4 border border-purple-700/50">
+            ✉️
+        </div>
+
+        <h2 class="text-2xl font-bold text-white mb-2">Email Verification</h2>
+        <p class="text-slate-400 text-sm mb-6">
+            We sent a 6-digit verification code to <br>
+            <span class="text-purple-300 font-semibold">{{ email }}</span>
+        </p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <p class="text-xs mb-4 p-2 rounded-lg {% if message.tags == 'error' %}bg-red-900/40 text-red-300{% else %}bg-green-900/40 text-green-300{% endif %}">
+                    {{ message }}
+                </p>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" action="{% url 'verify_otp' %}" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <input type="text" 
+                       name="otp" 
+                       maxLength="6" 
+                       placeholder="Enter 6-digit OTP" 
+                       required 
+                       class="w-full bg-slate-950 border border-slate-700 text-white text-center tracking-[0.5em] text-xl py-3 px-4 rounded-xl focus:outline-none focus:border-purple-500">
+            </div>
+
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-xl transition duration-200">
+                Verify OTP
+            </button>
+        </form>
+
+        <p class="text-xs text-slate-500 mt-6">
+            Didn't receive the code? <a href="{% url 'signup' %}" class="text-purple-400 hover:underline">Try Signing Up Again</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

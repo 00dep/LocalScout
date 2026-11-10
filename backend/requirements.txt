@@ -1,0 +1,10 @@
+Django==4.2.23
+Pillow==11.0.0
+resend==0.7.0
+djangorestframework==3.15.2
+google-auth==2.36.0
+psycopg2-binary==2.9.10
+dj-database-url==2.3.0
+python-dotenv==1.1.0
+gunicorn==23.0.0
+whitenoise==6.8.2

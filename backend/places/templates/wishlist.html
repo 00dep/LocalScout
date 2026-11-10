@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Saved Favorites | LocalScout{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div class="mb-8">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Saved Favorites</h1>
+        <p class="text-xs sm:text-sm text-slate-500 mt-1">Places you have bookmarked for your future visits.</p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for item in wishlist_items %}
+        <!-- Standardized Uniform Card Component -->
+        <article class="group bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-orange-400 transition-all duration-300 flex flex-col overflow-hidden h-full">
+            
+            <div class="relative h-48 w-full bg-slate-100 overflow-hidden flex-shrink-0">
+                {% if item.place.image %}
+                    <img src="{{ item.place.image.url }}" alt="{{ item.place.name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-3xl text-slate-400">📍</div>
+                {% endif %}
+                
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent"></div>
+
+                <!-- Rating Badge if available -->
+                {% if item.place.rating %}
+                <div class="absolute top-3 right-14 px-2.5 py-1 bg-white/90 backdrop-blur-md rounded-lg text-xs font-extrabold text-slate-900 border border-slate-200 shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-star text-amber-500" aria-hidden="true"></i> {{ item.place.rating }}
+                </div>
+                {% endif %}
+
+                <!-- Remove from Wishlist Form Button -->
+                <form method="POST" action="{% url 'toggle_save' item.place.pk %}" class="absolute top-3 right-3">
+                    {% csrf_token %}
+                    <button type="submit" aria-label="Remove from favorites" class="w-8 h-8 rounded-xl bg-white/90 backdrop-blur-md text-orange-500 hover:text-red-500 flex items-center justify-center shadow-md transition hover:scale-105">
+                        <i class="fa-solid fa-heart text-xs" aria-hidden="true"></i>
+                    </button>
+                </form>
+
+                {% if item.place.location or item.place.category %}
+                <span class="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-md rounded-lg text-[10px] font-extrabold uppercase text-orange-600 shadow-xs">
+                    {{ item.place.location|default:item.place.category.name }}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="p-5 flex flex-col flex-grow justify-between space-y-4">
+                <div class="space-y-1.5">
+                    <h3 class="text-base font-extrabold text-slate-900 group-hover:text-orange-600 transition line-clamp-1" title="{{ item.place.name }}">{{ item.place.name }}</h3>
+                    <p class="text-xs text-slate-500 line-clamp-1 flex items-center gap-1">
+                        <i class="fa-solid fa-location-dot text-slate-400" aria-hidden="true"></i> {{ item.place.address }}
+                    </p>
+                </div>
+                
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
+                    <span class="text-xs font-semibold text-slate-600">{{ item.place.get_price_range_display|default:"Explore Spot" }}</span>
+                    <a href="{% url 'place_detail' item.place.pk %}" class="px-4 py-2 bg-slate-900 hover:bg-orange-500 text-white rounded-xl text-xs font-bold transition duration-200 shadow-xs">
+                        View Details
+                    </a>
+                </div>
+            </div>
+        </article>
+        {% empty %}
+        <div class="col-span-full py-16 text-center bg-white rounded-2xl border border-slate-200 shadow-xs">
+            <div class="text-4xl mb-3">❤️</div>
+            <h3 class="text-base font-bold text-slate-800">Your Wishlist is Empty</h3>
+            <p class="text-xs text-slate-500 mt-1">Start scouting places and bookmark your favorites!</p>
+            <a href="{% url 'place_list' %}" class="inline-block mt-4 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 transition shadow-sm">
+                Browse Places
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

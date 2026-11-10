@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Spot | LocalScout{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    
+    <div class="mb-8 text-center space-y-2">
+        <span class="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-black uppercase rounded-lg tracking-wider">
+            Management
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">Edit Your Spot: {{ place.name }}</h1>
+        <p class="text-slate-600 text-xs sm:text-sm max-w-lg mx-auto">
+            Update your spot details, manage gallery images, and handle menu items.
+        </p>
+    </div>
+
+    <!-- Main Edit Form -->
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm mb-10">
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Spot Name <span class="text-orange-500">*</span></label>
+                    {{ form.name }}
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Category <span class="text-orange-500">*</span></label>
+                    {{ form.category }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Location / Area <span class="text-orange-500">*</span></label>
+                    {{ form.location }}
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Full Address <span class="text-orange-500">*</span></label>
+                    {{ form.address }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Price Range <span class="text-orange-500">*</span></label>
+                    {{ form.price_range }}
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Opening Hours</label>
+                    {{ form.opening_hours }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Phone Number</label>
+                    {{ form.phone }}
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Website Link</label>
+                    {{ form.website }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Latitude</label>
+                    {{ form.latitude }}
+                </div>
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Longitude</label>
+                    {{ form.longitude }}
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Description <span class="text-orange-500">*</span></label>
+                {{ form.description }}
+            </div>
+
+            <!-- Multiple Gallery Images Upload Field -->
+            <div class="space-y-1.5">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Add More Gallery Images (Multiple)</label>
+                <div class="mt-1">
+                    <input type="file" name="gallery_images" multiple class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100">
+                </div>
+                <p class="text-[11px] text-slate-400">Select multiple photos to append to your existing gallery.</p>
+            </div>
+
+            <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+                <a href="{% url 'profile' %}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition">
+                    Back to Profile
+                </a>
+                <button type="submit" class="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition shadow-sm">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Existing Gallery Images Section -->
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm mb-10">
+        <h2 class="text-xl font-black text-slate-900 mb-4">Current Gallery Photos</h2>
+        {% if place.images.all %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {% for img in place.images.all %}
+            <div class="relative group rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
+                <img src="{{ img.image.url }}" alt="Gallery Image" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <a href="{% url 'delete_gallery_image' img.id %}" class="p-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition shadow-md">
+                        Delete
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-400">No extra gallery images uploaded yet.</p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
