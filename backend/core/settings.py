@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Load environment variables from project root .env file
@@ -10,13 +11,16 @@ load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security Settings
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET",
-    "django-insecure-x8#7y2@4k9!m5q1r6t3z0a8b7c5d9e2f"
-)
+SECRET_KEY = os.environ.get("DJANGO_SECRET")
+if not SECRET_KEY:
+    raise ImproperlyConfigured("DJANGO_SECRET must be set.")
 
 # Dynamic DEBUG Configuration
-DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").strip().lower() == "true"
+
+CLOUDINARY_URL = os.environ.get("CLOUDINARY_URL", "").strip()
+if not DEBUG and not CLOUDINARY_URL:
+    raise ImproperlyConfigured("CLOUDINARY_URL must be set outside DEBUG mode.")
 
 # Dynamic ALLOWED_HOSTS Configuration
 ALLOWED_HOSTS = os.environ.get(
@@ -42,6 +46,9 @@ INSTALLED_APPS = [
     # Your Apps
     'places',
 ]
+
+if CLOUDINARY_URL:
+    INSTALLED_APPS += ['cloudinary_storage', 'cloudinary']
 
 # Middleware Configuration
 MIDDLEWARE = [
@@ -78,13 +85,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
-# Database Configuration (PostgreSQL with fallback or direct connection)
-if os.environ.get('DATABASE_URL'):
+# Database Configuration
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+if not DEBUG and not DATABASE_URL:
+    raise ImproperlyConfigured("DATABASE_URL must be set outside DEBUG mode.")
+
+if DATABASE_URL:
     import dj_database_url
     DATABASES = {
         'default': dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600
+            default=DATABASE_URL,
+            conn_max_age=60,
+            conn_health_checks=True,
+            ssl_require=not DEBUG,
         )
     }
 else:
@@ -123,11 +136,22 @@ STATICFILES_DIRS = [
     BASE_DIR / 'places' / 'static',
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media Files (User Uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+STORAGES = {
+    'default': {
+        'BACKEND': (
+            'cloudinary_storage.storage.MediaCloudinaryStorage'
+            if CLOUDINARY_URL
+            else 'django.core.files.storage.FileSystemStorage'
+        ),
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
 
 # Authentication Redirect Settings
 LOGIN_URL = 'signup'  
@@ -137,16 +161,30 @@ LOGOUT_REDIRECT_URL = '/'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Production Security Headers (Automatically bypassed if DJANGO_DEBUG=True for local testing)
+# Render terminates TLS at its proxy and forwards the original scheme.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
+# Production Security Headers
 if not DEBUG:
+    if not os.environ.get('RESEND_API_KEY', '').strip():
+        raise ImproperlyConfigured("RESEND_API_KEY must be set outside DEBUG mode.")
+    if not os.environ.get('DEFAULT_FROM_EMAIL', '').strip():
+        raise ImproperlyConfigured("DEFAULT_FROM_EMAIL must be set outside DEBUG mode.")
+
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 else:
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
@@ -202,8 +240,7 @@ LOGGING = {
     },
 }
 
-# Email Configuration (Resend)
-EMAIL_BACKEND = "django_resend.email.ResendBackend"
+# OTP email is sent directly through the Resend SDK.
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 DEFAULT_FROM_EMAIL = os.environ.get(
     "DEFAULT_FROM_EMAIL",

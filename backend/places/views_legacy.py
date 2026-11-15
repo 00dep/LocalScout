@@ -325,7 +325,12 @@ def place_list(request):
 
 
 def place_detail(request, pk):
-    place = get_object_or_404(Place.objects.select_related('category', 'owner'), pk=pk)
+    places = Place.objects.select_related('category', 'owner')
+    if not request.user.is_authenticated:
+        places = places.filter(is_approved=True)
+    elif not request.user.is_staff:
+        places = places.filter(Q(is_approved=True) | Q(owner=request.user))
+    place = get_object_or_404(places, pk=pk)
 
     is_already_rated = False
     if request.user.is_authenticated:
@@ -461,6 +466,7 @@ def add_menu_item(request, pk):
 
 
 @login_required
+@require_POST
 def delete_menu_item(request, item_id):
     item = get_object_or_404(MenuItem, id=item_id, place__owner=request.user)
     place_pk = item.place.pk
@@ -470,6 +476,7 @@ def delete_menu_item(request, item_id):
 
 
 @login_required
+@require_POST
 def delete_gallery_image(request, image_id):
     img = get_object_or_404(PlaceImage, id=image_id, place__owner=request.user)
     place_pk = img.place.pk

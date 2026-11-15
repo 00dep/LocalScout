@@ -1,7 +1,7 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
-from .models import Place, Category, Review
+from .models import Place, Category, MenuItem, PlaceImage, Review
 
 class LocalScoutTestSuite(TestCase):
     def setUp(self):
@@ -86,3 +86,63 @@ class LocalScoutTestSuite(TestCase):
      
         response = self.client.get(reverse('add_place'))
         self.assertEqual(response.status_code, 302)
+
+    def test_unapproved_place_detail_is_hidden_from_public(self):
+        pending_place = Place.objects.create(
+            name='Pending Cafe',
+            address='Ranaghat',
+            location='Ranaghat',
+            owner=self.user,
+            is_approved=False,
+        )
+
+        response = self.client.get(
+            reverse('place_detail', kwargs={'pk': pending_place.pk})
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_owner_can_view_unapproved_place_detail(self):
+        pending_place = Place.objects.create(
+            name='Pending Cafe',
+            address='Ranaghat',
+            location='Ranaghat',
+            owner=self.user,
+            is_approved=False,
+        )
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(
+            reverse('place_detail', kwargs={'pk': pending_place.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_menu_item_cannot_be_deleted_with_get(self):
+        item = MenuItem.objects.create(
+            place=self.place,
+            name='Tea',
+            price='10.00',
+        )
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(
+            reverse('delete_menu_item', kwargs={'item_id': item.pk})
+        )
+
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(MenuItem.objects.filter(pk=item.pk).exists())
+
+    def test_gallery_image_cannot_be_deleted_with_get(self):
+        image = PlaceImage.objects.create(
+            place=self.place,
+            image='places/gallery/test.jpg',
+        )
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(
+            reverse('delete_gallery_image', kwargs={'image_id': image.pk})
+        )
+
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(PlaceImage.objects.filter(pk=image.pk).exists())
