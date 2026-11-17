@@ -236,6 +236,34 @@ class LocalScoutTestSuite(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_anonymous_visitor_can_open_approved_place_link(self):
+        response = self.client.get(
+            reverse('place_detail', kwargs={'pk': self.place.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_owner_profile_has_share_link_for_approved_place(self):
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(reverse('profile'))
+
+        self.assertContains(response, 'Share Store Link')
+        self.assertContains(
+            response,
+            reverse('place_detail', kwargs={'pk': self.place.pk}),
+        )
+
+    def test_owner_profile_explains_pending_place_share_restriction(self):
+        self.place.is_approved = False
+        self.place.save(update_fields=['is_approved'])
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(reverse('profile'))
+
+        self.assertContains(response, 'Share link will work for others after admin approval.')
+        self.assertNotContains(response, 'Share Store Link')
+
     def test_menu_item_cannot_be_deleted_with_get(self):
         item = MenuItem.objects.create(
             place=self.place,

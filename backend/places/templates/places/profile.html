@@ -58,6 +58,24 @@
                             Edit Store
                         </a>
                     </div>
+                    {% if store.is_approved %}
+                    <div class="space-y-1">
+                        <button
+                            type="button"
+                            data-share-store
+                            data-share-url="{% url 'place_detail' store.pk %}"
+                            data-share-title="{{ store.name }}"
+                            class="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                        >
+                            <i class="fa-solid fa-share-nodes mr-1" aria-hidden="true"></i> Share Store Link
+                        </button>
+                        <p data-share-status class="min-h-4 text-center text-xs text-slate-500" role="status" aria-live="polite"></p>
+                    </div>
+                    {% else %}
+                    <p class="text-center text-xs text-amber-700" role="status">
+                        Share link will work for others after admin approval.
+                    </p>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -77,4 +95,37 @@
     </div>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-share-store]').forEach(function (button) {
+            button.addEventListener('click', async function () {
+                const url = new URL(button.dataset.shareUrl, window.location.origin).href;
+                const status = button.parentElement.querySelector('[data-share-status]');
+                status.textContent = '';
+
+                try {
+                    if (navigator.share) {
+                        await navigator.share({
+                            title: button.dataset.shareTitle,
+                            url: url,
+                        });
+                        status.textContent = 'Store link shared.';
+                    } else if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(url);
+                        status.textContent = 'Store link copied. You can paste it to share.';
+                    } else {
+                        status.textContent = 'Could not share the link in this browser.';
+                    }
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        status.textContent = 'Could not share the link. Copy it from the address bar.';
+                    }
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}
