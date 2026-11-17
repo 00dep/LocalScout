@@ -28,7 +28,12 @@
                     {% if user.is_authenticated %}
                         <li><a href="{% url 'profile' %}" class="hover:text-orange-400 transition">My Profile</a></li>
                         <li><a href="{% url 'wishlist' %}" class="hover:text-orange-400 transition">Saved Wishlist</a></li>
-                        <li><a href="{% url 'logout' %}" class="hover:text-orange-400 transition">Log Out</a></li>
+                        <li>
+                            <form action="{% url 'logout' %}" method="POST">
+                                {% csrf_token %}
+                                <button type="submit" class="hover:text-orange-400 transition">Log Out</button>
+                            </form>
+                        </li>
                     {% else %}
                         <li><a href="{% url 'login' %}" class="hover:text-orange-400 transition">Sign In</a></li>
                         <li><a href="{% url 'signup' %}" class="hover:text-orange-400 transition">Create Account</a></li>

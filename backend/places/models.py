@@ -82,6 +82,14 @@ class Review(models.Model):
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=('place', 'user'),
+                name='unique_review_per_place_user',
+            ),
+        ]
+
     def __str__(self):
         return f"{self.user.username} - {self.place.name} ({self.rating}★)"
 

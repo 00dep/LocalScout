@@ -1,15 +1,17 @@
-import random
+import logging
 from datetime import timedelta
 from decimal import Decimal
 import resend
+from django.contrib.auth.hashers import check_password, make_password
 from django.shortcuts import render, get_object_or_404, redirect
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.conf import settings
@@ -20,6 +22,10 @@ from rest_framework.response import Response
 
 from .models import Place, Category, Review, UserProfile, PlaceImage, MenuItem
 from .forms import UserRegistrationForm, PlaceForm
+from .services.otp_service import generate_otp
+
+logger = logging.getLogger(__name__)
+OTP_MAX_ATTEMPTS = 5
 
 # 📍 City List
 CITIES = ['Ranaghat', 'Krishnanagar', 'Kalyani']
@@ -72,15 +78,15 @@ def signup_view(request):
                 messages.error(request, "Email is already registered.")
                 return render(request, 'places/signup.html', {'form': form})
 
-            # ২. 6-Digit random OTP তৈরি ও Session Storage
-            otp = str(random.randint(100000, 999999))
+            otp = generate_otp()
             request.session['signup_data'] = {
                 'username': username,
                 'email': email,
-                'password': password,
+                'password_hash': make_password(password),
                 'role': role,
-                'otp': otp,
+                'otp_hash': make_password(otp),
                 'otp_expires_at': (timezone.now() + timedelta(minutes=10)).isoformat(),
+                'otp_attempts': 0,
             }
 
             resend_api_key = getattr(settings, 'RESEND_API_KEY', '').strip()
@@ -105,10 +111,11 @@ def signup_view(request):
                 messages.success(request, f"An OTP code has been sent to {email}")
                 return redirect('verify_otp')
             except Exception as e:
-                print("Email Error:", e)
+                logger.exception("OTP email delivery failed")
                 if settings.DEBUG:
                     messages.warning(request, f"Development mode: email could not be sent, so your OTP is {otp}")
                     return redirect('verify_otp')
+                request.session.pop('signup_data', None)
                 messages.error(request, "Signup failed because the OTP email could not be sent. Check your RESEND_API_KEY and try again.")
                 return render(request, 'places/signup.html', {'form': form})
         else:
@@ -130,29 +137,57 @@ def verify_otp_view(request):
         user_otp = ''.join(request.POST.get('otp', '').strip().split())
         expires_at = signup_data.get('otp_expires_at')
         try:
-            otp_expired = expires_at and timezone.now() >= timezone.datetime.fromisoformat(expires_at)
+            expiration = timezone.datetime.fromisoformat(expires_at)
+            otp_expired = (
+                timezone.is_naive(expiration)
+                or timezone.now() >= expiration
+            )
         except (TypeError, ValueError):
-            otp_expired = False
+            otp_expired = True
 
         if otp_expired:
+            request.session.pop('signup_data', None)
             messages.error(request, "This OTP has expired. Please sign up again to receive a new code.")
-        elif user_otp == signup_data.get('otp'):
-            # ৪. OTP ঠিক থাকলে User তৈরি করা
-            user = User.objects.create_user(
-                username=signup_data['username'],
-                email=signup_data['email'],
-                password=signup_data['password']
-            )
-            # নির্বাচন করা Role অনুযায়ী UserProfile সেট করা
-            user_role = signup_data.get('role', 'customer')
-            UserProfile.objects.get_or_create(user=user, defaults={'role': user_role})
-
-            del request.session['signup_data']
-
-            login(request, user)
-            messages.success(request, "Account verified & created successfully!")
-            return redirect('home')
         else:
+            attempts = signup_data.get('otp_attempts', 0)
+            if not isinstance(attempts, int) or attempts < 0:
+                attempts = OTP_MAX_ATTEMPTS
+
+            if attempts >= OTP_MAX_ATTEMPTS:
+                request.session.pop('signup_data', None)
+                messages.error(request, "Too many incorrect codes. Please sign up again.")
+                return redirect('signup')
+
+            signup_data['otp_attempts'] = attempts + 1
+            request.session['signup_data'] = signup_data
+
+            if check_password(user_otp, signup_data.get('otp_hash', '')):
+                try:
+                    with transaction.atomic():
+                        user = User(
+                            username=signup_data['username'],
+                            email=signup_data['email'],
+                            password=signup_data['password_hash'],
+                        )
+                        user.save()
+                        UserProfile.objects.get_or_create(
+                            user=user,
+                            defaults={'role': signup_data.get('role', 'customer')},
+                        )
+                except IntegrityError:
+                    request.session.pop('signup_data', None)
+                    messages.error(request, "That username or email is already registered. Please sign up again.")
+                    return redirect('signup')
+
+                request.session.pop('signup_data', None)
+                login(request, user)
+                messages.success(request, "Account verified & created successfully!")
+                return redirect('home')
+
+            if signup_data['otp_attempts'] >= OTP_MAX_ATTEMPTS:
+                request.session.pop('signup_data', None)
+                messages.error(request, "Too many incorrect codes. Please sign up again.")
+                return redirect('signup')
             messages.error(request, "Invalid OTP! Please enter the correct code.")
 
     return render(request, 'places/verify_otp.html', {'email': signup_data.get('email')})
@@ -183,6 +218,7 @@ def login_view(request):
     return render(request, 'places/login.html', {'form': form})
 
 
+@require_POST
 def logout_view(request):
     logout(request)
     messages.info(request, "You have been logged out.")
@@ -197,7 +233,10 @@ def add_place(request):
             place = form.save(commit=False)
             place.owner = request.user 
             place.is_approved = False
-            place.save()
+            with transaction.atomic():
+                place.save()
+                for image in request.FILES.getlist('gallery_images'):
+                    PlaceImage.objects.create(place=place, image=image)
             return redirect('store_pending')
     else:
         form = PlaceForm()
@@ -213,7 +252,11 @@ def store_pending(request):
 @login_required
 def profile_view(request):
     user_stores = Place.objects.filter(owner=request.user).select_related('category').order_by('-created_at')
-    return render(request, 'places/profile.html', {'user_stores': user_stores})
+    user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    return render(request, 'places/profile.html', {
+        'user_stores': user_stores,
+        'user_profile': user_profile,
+    })
 
 
 @require_POST
@@ -221,6 +264,9 @@ def google_login_callback(request):
     token = request.POST.get("credential")
     if not token:
         return redirect("home")
+    if not settings.GOOGLE_CLIENT_ID:
+        messages.error(request, "Google sign-in is not configured.")
+        return redirect("login")
 
     try:
         idinfo = id_token.verify_oauth2_token(
@@ -432,6 +478,7 @@ def edit_place(request, pk):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def delete_place(request, pk):
     place = get_object_or_404(Place, pk=pk)
     if request.user != place.owner and not request.user.is_staff:

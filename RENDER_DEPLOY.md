@@ -11,6 +11,7 @@ Connect the repository to Render and create a Blueprint from `render.yaml`. Set 
 - `DJANGO_SECRET`: a newly generated Django secret key.
 - `DJANGO_ALLOWED_HOSTS`: comma-separated Render hostname and custom domain, for example `localscout.onrender.com,example.com,www.example.com`.
 - `CSRF_TRUSTED_ORIGINS`: comma-separated HTTPS origins, for example `https://localscout.onrender.com,https://example.com,https://www.example.com`.
+- `GOOGLE_CLIENT_ID` is optional; set it only when configuring Google sign-in.
 
 The build command installs dependencies and collects static files. The start command applies migrations before starting Gunicorn. Add the custom domain in Render, then configure the DNS records Render provides at your domain registrar. Do not remove unrelated DNS or email records.
 

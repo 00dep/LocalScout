@@ -1,9 +1,16 @@
-from django.test import TestCase, Client
+from io import BytesIO
+from unittest.mock import patch
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError, transaction
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
-from .models import Place, Category, MenuItem, PlaceImage, Review
+from PIL import Image
+from .models import Place, Category, MenuItem, PlaceImage, Review, UserProfile
 
 class LocalScoutTestSuite(TestCase):
+    TEST_OTP = '123456'
+
     def setUp(self):
         self.client = Client()
         
@@ -23,6 +30,13 @@ class LocalScoutTestSuite(TestCase):
             is_approved=True
         )
 
+    def signup_with_test_otp(self, username, email):
+        with patch('places.views_legacy.generate_otp', return_value=self.TEST_OTP):
+            return self.client.post(reverse('signup'), {
+                'username': username,
+                'email': email,
+                'password': 'testpassword123',
+            })
     
     def test_signup_page_load(self):
         response = self.client.get(reverse('signup'))
@@ -30,27 +44,37 @@ class LocalScoutTestSuite(TestCase):
 
     def test_signup_without_resend_key_uses_development_otp(self):
         with self.settings(DEBUG=True, RESEND_API_KEY=''):
-            response = self.client.post(reverse('signup'), {
-                'username': 'otpuser',
-                'email': 'otpuser@example.com',
-                'password': 'testpassword123',
-            })
+            response = self.signup_with_test_otp('otpuser', 'otpuser@example.com')
 
         self.assertRedirects(response, reverse('verify_otp'))
-        otp = self.client.session['signup_data']['otp']
+        signup_data = self.client.session['signup_data']
+        self.assertNotIn('password', signup_data)
+        self.assertNotIn('otp', signup_data)
+        self.assertNotEqual(signup_data['password_hash'], 'testpassword123')
 
-        response = self.client.post(reverse('verify_otp'), {'otp': otp})
+        response = self.client.post(
+            reverse('verify_otp'),
+            {'otp': self.TEST_OTP},
+        )
 
         self.assertRedirects(response, reverse('home'))
-        self.assertTrue(User.objects.filter(username='otpuser').exists())
+        user = User.objects.get(username='otpuser')
+        self.assertTrue(user.check_password('testpassword123'))
+
+    def test_otp_is_invalidated_after_five_incorrect_attempts(self):
+        with self.settings(DEBUG=True, RESEND_API_KEY=''):
+            self.signup_with_test_otp('limitedotp', 'limited@example.com')
+
+        for _ in range(5):
+            response = self.client.post(reverse('verify_otp'), {'otp': '000000'})
+
+        self.assertRedirects(response, reverse('signup'))
+        self.assertNotIn('signup_data', self.client.session)
+        self.assertFalse(User.objects.filter(username='limitedotp').exists())
 
     def test_expired_otp_shows_clear_error(self):
         with self.settings(DEBUG=True, RESEND_API_KEY=''):
-            self.client.post(reverse('signup'), {
-                'username': 'expiredotp',
-                'email': 'expired@example.com',
-                'password': 'testpassword123',
-            })
+            self.signup_with_test_otp('expiredotp', 'expired@example.com')
 
         session = self.client.session
         session['signup_data']['otp_expires_at'] = '2000-01-01T00:00:00+00:00'
@@ -59,6 +83,23 @@ class LocalScoutTestSuite(TestCase):
         response = self.client.post(reverse('verify_otp'), {'otp': '000000'})
 
         self.assertContains(response, 'This OTP has expired')
+        self.assertNotIn('signup_data', self.client.session)
+
+    def test_malformed_otp_expiry_fails_closed(self):
+        with self.settings(DEBUG=True, RESEND_API_KEY=''):
+            self.signup_with_test_otp('malformedotp', 'malformed@example.com')
+
+        session = self.client.session
+        session['signup_data']['otp_expires_at'] = 'not-a-date'
+        session.save()
+
+        response = self.client.post(
+            reverse('verify_otp'),
+            {'otp': self.TEST_OTP},
+        )
+
+        self.assertContains(response, 'This OTP has expired')
+        self.assertFalse(User.objects.filter(username='malformedotp').exists())
 
     
     def test_login_and_logout(self):
@@ -66,7 +107,12 @@ class LocalScoutTestSuite(TestCase):
         self.assertTrue(login_success)
         
         response = self.client.get(reverse('logout'))
+        self.assertEqual(response.status_code, 405)
+        self.assertIn('_auth_user_id', self.client.session)
+
+        response = self.client.post(reverse('logout'))
         self.assertEqual(response.status_code, 302)
+        self.assertNotIn('_auth_user_id', self.client.session)
 
     
     def test_places_search(self):
@@ -86,6 +132,75 @@ class LocalScoutTestSuite(TestCase):
      
         response = self.client.get(reverse('add_place'))
         self.assertEqual(response.status_code, 302)
+
+    @override_settings(STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+    })
+    def test_add_place_saves_gallery_images(self):
+        self.client.login(username='testuser', password='testpassword123')
+        image_buffer = BytesIO()
+        Image.new('RGB', (1, 1)).save(image_buffer, format='PNG')
+        image_buffer.seek(0)
+        gallery_image = SimpleUploadedFile(
+            'gallery.png',
+            image_buffer.read(),
+            content_type='image/png',
+        )
+
+        response = self.client.post(reverse('add_place'), {
+            'name': 'Gallery Cafe',
+            'category': self.category.pk,
+            'description': 'A small cafe',
+            'address': 'Ranaghat',
+            'location': 'Ranaghat',
+            'opening_hours': '10 AM - 10 PM',
+            'phone': '',
+            'website': '',
+            'price_range': '$$',
+            'latitude': '',
+            'longitude': '',
+            'gallery_images': [gallery_image],
+        })
+
+        self.assertRedirects(response, reverse('store_pending'))
+        place = Place.objects.get(name='Gallery Cafe')
+        self.assertEqual(place.gallery_images.count(), 1)
+
+    def test_delete_place_confirmation_page_loads_and_post_deletes(self):
+        self.client.login(username='testuser', password='testpassword123')
+        url = reverse('delete_place', kwargs={'pk': self.place.pk})
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(url)
+        self.assertRedirects(response, reverse('place_list'))
+        self.assertFalse(Place.objects.filter(pk=self.place.pk).exists())
+
+    def test_profile_includes_user_role(self):
+        profile = UserProfile.objects.create(user=self.user, role='owner')
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(reverse('profile'))
+
+        self.assertContains(response, profile.role)
+
+    def test_google_login_fails_gracefully_when_not_configured(self):
+        with self.settings(GOOGLE_CLIENT_ID=''):
+            response = self.client.post(
+                reverse('google_login_callback'),
+                {'credential': 'token'},
+            )
+
+        self.assertRedirects(response, reverse('login'))
+
+    def test_user_cannot_create_duplicate_review_for_same_place(self):
+        Review.objects.create(place=self.place, user=self.user, rating=4)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Review.objects.create(place=self.place, user=self.user, rating=5)
 
     def test_unapproved_place_detail_is_hidden_from_public(self):
         pending_place = Place.objects.create(
