@@ -1,6 +1,9 @@
+import os
 from io import BytesIO
 from unittest.mock import patch
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
@@ -261,3 +264,73 @@ class LocalScoutTestSuite(TestCase):
 
         self.assertEqual(response.status_code, 405)
         self.assertTrue(PlaceImage.objects.filter(pk=image.pk).exists())
+
+    def test_bootstrap_admin_creates_superuser_from_environment(self):
+        env = {
+            'DJANGO_BOOTSTRAP_ADMIN_USERNAME': 'localscout-admin',
+            'DJANGO_BOOTSTRAP_ADMIN_EMAIL': 'admin@example.com',
+            'DJANGO_BOOTSTRAP_ADMIN_PASSWORD': 'StrongUniquePassword!47',
+        }
+
+        with patch.dict(os.environ, env):
+            call_command('bootstrap_admin')
+
+        admin_user = User.objects.get(username='localscout-admin')
+        self.assertTrue(admin_user.is_staff)
+        self.assertTrue(admin_user.is_superuser)
+        self.assertTrue(admin_user.check_password(env['DJANGO_BOOTSTRAP_ADMIN_PASSWORD']))
+
+    def test_bootstrap_admin_is_idempotent(self):
+        admin_user = User.objects.create_superuser(
+            username='localscout-admin',
+            email='admin@example.com',
+            password='OriginalPassword!47',
+        )
+        env = {
+            'DJANGO_BOOTSTRAP_ADMIN_USERNAME': 'localscout-admin',
+            'DJANGO_BOOTSTRAP_ADMIN_EMAIL': 'admin@example.com',
+            'DJANGO_BOOTSTRAP_ADMIN_PASSWORD': 'DifferentPassword!47',
+        }
+
+        with patch.dict(os.environ, env):
+            call_command('bootstrap_admin')
+
+        admin_user.refresh_from_db()
+        self.assertTrue(admin_user.check_password('OriginalPassword!47'))
+        self.assertFalse(admin_user.check_password(env['DJANGO_BOOTSTRAP_ADMIN_PASSWORD']))
+
+    def test_bootstrap_admin_rejects_partial_environment(self):
+        env = {'DJANGO_BOOTSTRAP_ADMIN_USERNAME': 'localscout-admin'}
+        variable_names = (
+            'DJANGO_BOOTSTRAP_ADMIN_USERNAME',
+            'DJANGO_BOOTSTRAP_ADMIN_EMAIL',
+            'DJANGO_BOOTSTRAP_ADMIN_PASSWORD',
+        )
+
+        with patch.dict(os.environ, {}, clear=False):
+            for name in variable_names:
+                os.environ.pop(name, None)
+            os.environ.update(env)
+
+            with self.assertRaisesMessage(CommandError, 'must all be set together'):
+                call_command('bootstrap_admin')
+
+    def test_bootstrap_admin_does_not_promote_existing_regular_user(self):
+        User.objects.create_user(
+            username='localscout-admin',
+            email='user@example.com',
+            password='RegularPassword!47',
+        )
+        env = {
+            'DJANGO_BOOTSTRAP_ADMIN_USERNAME': 'localscout-admin',
+            'DJANGO_BOOTSTRAP_ADMIN_EMAIL': 'admin@example.com',
+            'DJANGO_BOOTSTRAP_ADMIN_PASSWORD': 'StrongUniquePassword!47',
+        }
+
+        with patch.dict(os.environ, env):
+            with self.assertRaisesMessage(CommandError, 'already exists'):
+                call_command('bootstrap_admin')
+
+        regular_user = User.objects.get(username='localscout-admin')
+        self.assertFalse(regular_user.is_staff)
+        self.assertFalse(regular_user.is_superuser)

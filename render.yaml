@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput
-    startCommand: python backend/manage.py migrate --noinput && gunicorn --config gunicorn_config.py --chdir backend core.wsgi:application
+    startCommand: python backend/manage.py migrate --noinput && python backend/manage.py bootstrap_admin && gunicorn --config gunicorn_config.py --chdir backend core.wsgi:application
     healthCheckPath: /
     envVars:
       - key: DJANGO_DEBUG
