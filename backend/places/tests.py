@@ -235,6 +235,8 @@ class LocalScoutTestSuite(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Share link will work for others after admin approval.')
+        self.assertNotContains(response, 'Share Store Link')
 
     def test_anonymous_visitor_can_open_approved_place_link(self):
         response = self.client.get(
@@ -242,6 +244,7 @@ class LocalScoutTestSuite(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Share Store Link')
 
     def test_owner_profile_has_share_link_for_approved_place(self):
         self.client.login(username='testuser', password='testpassword123')
