@@ -106,10 +106,26 @@
                     
                     <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
 
-                    {% if place.rating %}
-                    <div class="absolute top-3 right-3 px-2.5 py-1 bg-slate-900/90 backdrop-blur-md rounded-lg text-xs font-extrabold text-white border border-slate-700 shadow-md flex items-center gap-1.5">
-                        <i class="fa-solid fa-star text-amber-400"></i> {{ place.rating }}
+                    <div class="absolute top-3 right-14 px-2.5 py-1 bg-slate-900/90 backdrop-blur-md rounded-lg text-[10px] font-extrabold text-white border border-slate-700 shadow-md flex items-center gap-1.5">
+                        {% if place.review_count %}
+                        <i class="fa-solid fa-star text-amber-400" aria-hidden="true"></i> {{ place.rating|floatformat:1 }} · {{ place.review_count }}
+                        {% else %}
+                        No ratings yet
+                        {% endif %}
                     </div>
+
+                    {% if user.is_authenticated %}
+                    <form method="POST" action="{% url 'toggle_save' place.pk %}" class="absolute top-3 right-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" aria-label="{% if place.is_in_wishlist %}Remove {{ place.name }} from wishlist{% else %}Add {{ place.name }} to wishlist{% endif %}" aria-pressed="{{ place.is_in_wishlist|yesno:'true,false' }}" class="w-8 h-8 rounded-xl bg-white/95 text-orange-600 hover:text-red-600 flex items-center justify-center shadow-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" title="{% if place.is_in_wishlist %}Remove from wishlist{% else %}Add to wishlist{% endif %}">
+                            <i class="fa-{% if place.is_in_wishlist %}solid{% else %}regular{% endif %} fa-heart" aria-hidden="true"></i>
+                        </button>
+                    </form>
+                    {% else %}
+                    <a href="{% url 'login' %}" aria-label="Log in to save {{ place.name }} to your wishlist" class="absolute top-3 right-3 w-8 h-8 rounded-xl bg-white/95 text-orange-600 hover:text-red-600 flex items-center justify-center shadow-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" title="Log in to add to wishlist">
+                        <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                    </a>
                     {% endif %}
 
                     <span class="absolute bottom-3 left-3 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-orange-500 text-white">
@@ -176,6 +192,26 @@
                 <span class="absolute top-3 left-3 px-2 py-0.5 bg-slate-900/80 backdrop-blur-sm text-[10px] font-bold text-orange-400 rounded-md">
                     {{ place.location }}
                 </span>
+                {% endif %}
+                <div class="absolute top-3 right-14 px-2 py-1 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-slate-800 rounded-md shadow-sm">
+                    {% if place.review_count %}
+                    <i class="fa-solid fa-star text-amber-500" aria-hidden="true"></i> {{ place.rating|floatformat:1 }} · {{ place.review_count }}
+                    {% else %}
+                    No ratings yet
+                    {% endif %}
+                </div>
+                {% if user.is_authenticated %}
+                <form method="POST" action="{% url 'toggle_save' place.pk %}" class="absolute top-3 right-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" aria-label="{% if place.is_in_wishlist %}Remove {{ place.name }} from wishlist{% else %}Add {{ place.name }} to wishlist{% endif %}" aria-pressed="{{ place.is_in_wishlist|yesno:'true,false' }}" class="w-8 h-8 rounded-xl bg-white/95 text-orange-600 hover:text-red-600 flex items-center justify-center shadow-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" title="{% if place.is_in_wishlist %}Remove from wishlist{% else %}Add to wishlist{% endif %}">
+                        <i class="fa-{% if place.is_in_wishlist %}solid{% else %}regular{% endif %} fa-heart" aria-hidden="true"></i>
+                    </button>
+                </form>
+                {% else %}
+                <a href="{% url 'login' %}" aria-label="Log in to save {{ place.name }} to your wishlist" class="absolute top-3 right-3 w-8 h-8 rounded-xl bg-white/95 text-orange-600 hover:text-red-600 flex items-center justify-center shadow-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" title="Log in to add to wishlist">
+                    <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                </a>
                 {% endif %}
             </div>
 

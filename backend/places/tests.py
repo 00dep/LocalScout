@@ -156,6 +156,37 @@ class LocalScoutTestSuite(TestCase):
 
         self.assertContains(response, 'No ratings yet')
 
+    def test_home_shows_rating_and_wishlist_option(self):
+        response = self.client.get(reverse('home'))
+
+        self.assertContains(response, 'No ratings yet')
+        self.assertContains(response, 'Log in to save Test Cafe to your wishlist')
+
+    def test_home_shows_rating_score_and_saved_wishlist_state(self):
+        Review.objects.create(place=self.place, user=self.user, rating=4)
+        self.place.rating = '4.0'
+        self.place.save(update_fields=['rating'])
+        self.place.is_featured = True
+        self.place.save(update_fields=['is_featured'])
+        self.place.saved_by.add(self.user)
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(reverse('home'))
+
+        self.assertContains(response, '4.0 · 1')
+        self.assertContains(response, 'Remove Test Cafe from wishlist')
+
+    def test_home_wishlist_button_toggles_and_returns_home(self):
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.post(
+            reverse('toggle_save', kwargs={'pk': self.place.pk}),
+            {'next': reverse('home')},
+        )
+
+        self.assertRedirects(response, reverse('home'))
+        self.assertTrue(self.place.saved_by.filter(pk=self.user.pk).exists())
+
     def test_remove_from_wishlist_returns_to_wishlist(self):
         self.client.login(username='testuser', password='testpassword123')
         self.place.saved_by.add(self.user)

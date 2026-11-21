@@ -5,7 +5,7 @@ import resend
 from django.contrib.auth.hashers import check_password, make_password
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
@@ -328,14 +328,32 @@ def home(request):
     if location_name:
         places = places.filter(location__iexact=location_name.strip())
 
+    places = _annotate_home_place_state(places, request.user)
+    featured = Place.objects.filter(
+        is_featured=True,
+        is_approved=True,
+    ).select_related('category').order_by("-created_at")
+    featured = _annotate_home_place_state(featured, request.user)[:6]
+
     context = {
         "places": places,
-        "featured": Place.objects.filter(is_featured=True, is_approved=True).select_related('category').order_by("-created_at")[:6],
+        "featured": featured,
         "categories": Category.objects.all(),
         "cities": CITIES,
         "selected_location": location_name,
     }
     return render(request, "places/home.html", context)
+
+
+def _annotate_home_place_state(places, user):
+    places = places.annotate(review_count=Count('reviews'))
+    if user.is_authenticated:
+        return places.annotate(
+            is_in_wishlist=Exists(user.saved_places.filter(pk=OuterRef('pk')))
+        )
+    return places.annotate(
+        is_in_wishlist=Value(False, output_field=BooleanField())
+    )
 
 
 def place_list(request):
