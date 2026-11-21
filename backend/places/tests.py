@@ -127,8 +127,95 @@ class LocalScoutTestSuite(TestCase):
     def test_toggle_save_place(self):
         self.client.login(username='testuser', password='testpassword123')
         response = self.client.post(reverse('toggle_save', kwargs={'pk': self.place.pk}))
-        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(
+            response,
+            reverse('place_detail', kwargs={'pk': self.place.pk}),
+        )
         self.assertTrue(self.place.saved_by.filter(id=self.user.id).exists())
+
+    def test_place_detail_shows_saved_state_and_rating_near_name(self):
+        Review.objects.create(place=self.place, user=self.user, rating=4)
+        self.place.rating = '4.0'
+        self.place.save(update_fields=['rating'])
+        self.place.saved_by.add(self.user)
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(
+            reverse('place_detail', kwargs={'pk': self.place.pk})
+        )
+
+        self.assertContains(response, 'aria-label="Place rating"')
+        self.assertContains(response, '4.0')
+        self.assertContains(response, '(1 rating)')
+        self.assertContains(response, 'Remove from Wishlist')
+
+    def test_place_detail_shows_empty_rating_state(self):
+        response = self.client.get(
+            reverse('place_detail', kwargs={'pk': self.place.pk})
+        )
+
+        self.assertContains(response, 'No ratings yet')
+
+    def test_remove_from_wishlist_returns_to_wishlist(self):
+        self.client.login(username='testuser', password='testpassword123')
+        self.place.saved_by.add(self.user)
+
+        response = self.client.post(
+            reverse('toggle_save', kwargs={'pk': self.place.pk}),
+            {'next': reverse('wishlist')},
+        )
+
+        self.assertRedirects(response, reverse('wishlist'))
+        self.assertFalse(self.place.saved_by.filter(pk=self.user.pk).exists())
+        self.assertNotContains(self.client.get(reverse('wishlist')), self.place.name)
+
+    def test_toggle_save_ignores_external_redirect_url(self):
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.post(
+            reverse('toggle_save', kwargs={'pk': self.place.pk}),
+            {'next': 'https://example.com'},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('place_detail', kwargs={'pk': self.place.pk}),
+        )
+        self.assertTrue(self.place.saved_by.filter(pk=self.user.pk).exists())
+
+    def test_cannot_add_unapproved_place_to_wishlist(self):
+        pending_place = Place.objects.create(
+            name='Pending Cafe',
+            address='Ranaghat',
+            location='Ranaghat',
+            owner=self.user,
+            is_approved=False,
+        )
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.post(
+            reverse('toggle_save', kwargs={'pk': pending_place.pk})
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(pending_place.saved_by.filter(pk=self.user.pk).exists())
+
+    def test_rating_submission_updates_average_and_saves_comment(self):
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.post(
+            reverse('add_review', kwargs={'pk': self.place.pk}),
+            {'rating': '4', 'comment': 'A lovely place'},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('place_detail', kwargs={'pk': self.place.pk}),
+        )
+        self.place.refresh_from_db()
+        review = Review.objects.get(place=self.place, user=self.user)
+        self.assertEqual(str(self.place.rating), '4.0')
+        self.assertEqual(review.comment, 'A lovely place')
 
  
     def test_unauthorized_add_place_redirects(self):

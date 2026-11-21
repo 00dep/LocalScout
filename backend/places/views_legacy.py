@@ -388,7 +388,7 @@ def place_detail(request, pk):
         "place": place,
         "is_already_rated": is_already_rated,
         "total_ratings_count": total_ratings_count,
-        "is_saved": (
+        "is_in_wishlist": (
             request.user.is_authenticated and
             place.saved_by.filter(id=request.user.id).exists()
         ),
@@ -416,7 +416,7 @@ def add_review(request, pk):
         place=place,
         user=request.user,
         rating=rating_val,
-        comment=""
+        comment=request.POST.get("comment", "").strip()
     )
 
     all_reviews = place.reviews.all()
@@ -434,12 +434,20 @@ def add_review(request, pk):
 @login_required
 @require_POST
 def toggle_save(request, pk):
-    place = get_object_or_404(Place, pk=pk)
+    place = get_object_or_404(Place, pk=pk, is_approved=True)
 
     if place.saved_by.filter(id=request.user.id).exists():
         place.saved_by.remove(request.user)
     else:
         place.saved_by.add(request.user)
+
+    next_url = request.POST.get("next")
+    if next_url and url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
 
     return redirect("place_detail", pk=pk)
 

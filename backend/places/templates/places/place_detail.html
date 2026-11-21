@@ -51,6 +51,15 @@
                 <p class="text-xs sm:text-sm text-slate-700 font-medium flex items-center gap-2 break-words">
                     <i class="fa-solid fa-location-dot text-orange-500 shrink-0"></i> {{ place.address|default:"Address not specified" }}
                 </p>
+                <p class="flex items-center gap-1.5 text-xs font-bold text-slate-600" aria-label="Place rating">
+                    {% if total_ratings_count %}
+                    <i class="fa-solid fa-star text-amber-500" aria-hidden="true"></i>
+                    <span>{{ place.rating|floatformat:1 }}</span>
+                    <span class="font-medium">({{ total_ratings_count }} rating{{ total_ratings_count|pluralize }})</span>
+                    {% else %}
+                    <span>No ratings yet</span>
+                    {% endif %}
+                </p>
             </div>
 
             <div class="pt-4 border-t border-slate-100 space-y-3">
@@ -87,14 +96,18 @@
 
             <div class="pt-4 border-t border-slate-100 space-y-2">
                 <div class="flex items-center gap-3">
-                    {% if user.is_authenticated %}
+                    {% if user.is_authenticated and place.is_approved %}
                     <form action="{% url 'toggle_save' place.pk %}" method="POST" class="flex-1">
                         {% csrf_token %}
-                        <button type="submit" class="w-full py-3 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-heart"></i>
+                        <button type="submit" aria-pressed="{{ is_in_wishlist|yesno:'true,false' }}" class="w-full py-3 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2">
+                            <i class="fa-{% if is_in_wishlist %}solid{% else %}regular{% endif %} fa-heart" aria-hidden="true"></i>
                             {% if is_in_wishlist %}Remove from Wishlist{% else %}Add to Wishlist{% endif %}
                         </button>
                     </form>
+                    {% elif user.is_authenticated and request.user == place.owner %}
+                    <p class="flex-1 text-center text-xs text-amber-700" role="status">
+                        Wishlist is available after admin approval.
+                    </p>
                     {% endif %}
                     {% if place.is_approved %}
                     <button

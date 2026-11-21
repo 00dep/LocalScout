@@ -34,6 +34,7 @@
                 <!-- Remove from Wishlist Form Button -->
                 <form method="POST" action="{% url 'toggle_save' place.pk %}" class="absolute top-3 right-3">
                     {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'wishlist' %}">
                     <button type="submit" aria-label="Remove from favorites" class="w-8 h-8 rounded-xl bg-white/90 backdrop-blur-md text-orange-500 hover:text-red-500 flex items-center justify-center shadow-md transition hover:scale-105">
                         <i class="fa-solid fa-heart text-xs" aria-hidden="true"></i>
                     </button>
