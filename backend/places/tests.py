@@ -444,6 +444,55 @@ class LocalScoutTestSuite(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Share Store Link')
 
+    def test_place_detail_only_shows_menu_for_restaurant_or_cafe(self):
+        self.assertContains(
+            self.client.get(reverse('place_detail', kwargs={'pk': self.place.pk})),
+            'Menu & Special Items',
+        )
+
+        park = Category.objects.create(name='Park')
+        self.place.category = park
+        self.place.save(update_fields=['category'])
+        park_response = self.client.get(
+            reverse('place_detail', kwargs={'pk': self.place.pk})
+        )
+        self.assertNotContains(park_response, 'Menu & Special Items')
+
+        cafe = Category.objects.create(name='Cafe')
+        self.place.category = cafe
+        self.place.save(update_fields=['category'])
+        cafe_response = self.client.get(
+            reverse('place_detail', kwargs={'pk': self.place.pk})
+        )
+        self.assertContains(cafe_response, 'Menu & Special Items')
+
+    def test_edit_page_menu_options_follow_selected_category(self):
+        self.client.login(username='testuser', password='testpassword123')
+        edit_url = reverse('edit_place', kwargs={'pk': self.place.pk})
+        response = self.client.get(edit_url)
+        self.assertContains(response, 'data-menu-management')
+        self.assertNotContains(response, 'data-menu-management hidden')
+
+        self.assertContains(response, 'Cafe')
+        self.assertContains(response, 'Other')
+
+        park = Category.objects.create(name='Park')
+        self.place.category = park
+        self.place.save(update_fields=['category'])
+        response = self.client.get(edit_url)
+        self.assertContains(response, 'data-menu-management hidden')
+        self.assertContains(response, 'id="id_category"')
+
+    def test_add_place_category_options_include_cafe_park_and_other(self):
+        self.client.login(username='testuser', password='testpassword123')
+
+        response = self.client.get(reverse('add_place'))
+
+        self.assertContains(response, 'Restaurant')
+        self.assertContains(response, 'Cafe')
+        self.assertContains(response, 'Park')
+        self.assertContains(response, 'Other')
+
     def test_owner_profile_has_share_link_for_approved_place(self):
         self.client.login(username='testuser', password='testpassword123')
 

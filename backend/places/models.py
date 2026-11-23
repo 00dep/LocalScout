@@ -47,6 +47,13 @@ class Place(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def supports_menu(self):
+        return bool(
+            self.category
+            and self.category.name.strip().casefold() in {'restaurant', 'cafe', 'café'}
+        )
+
     # 🌟 প্রথম ১৫ দিন পর্যন্ত NEW ব্যাজ দেখানোর ডাইনামিক প্রপার্টি
     @property
     def is_new(self):

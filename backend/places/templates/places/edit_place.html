@@ -107,7 +107,7 @@
         </form>
     </div>
 
-    <section id="menu-management" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm mb-10 space-y-8">
+    <section id="menu-management" data-menu-management {% if not place.supports_menu %}hidden{% endif %} class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm mb-10 space-y-8">
         <div>
             <h2 class="text-xl font-black text-slate-900">Manage Menu Items</h2>
             <p class="mt-1 text-xs text-slate-500">Add new items or update existing names, descriptions, prices, and availability.</p>
@@ -201,4 +201,23 @@
     </div>
 
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const categoryField = document.getElementById('id_category');
+        const menuSection = document.querySelector('[data-menu-management]');
+        if (!categoryField || !menuSection) return;
+
+        function updateMenuVisibility() {
+            const selectedOption = categoryField.options[categoryField.selectedIndex];
+            const categoryName = selectedOption ? selectedOption.text.trim().toLocaleLowerCase() : '';
+            menuSection.hidden = !['restaurant', 'cafe', 'café'].includes(categoryName);
+        }
+
+        categoryField.addEventListener('change', updateMenuVisibility);
+        updateMenuVisibility();
+    });
+</script>
 {% endblock %}
