@@ -162,6 +162,13 @@ class LocalScoutTestSuite(TestCase):
         self.assertContains(response, 'No ratings yet')
         self.assertContains(response, 'Log in to save Test Cafe to your wishlist')
 
+    def test_footer_shows_contact_links(self):
+        response = self.client.get(reverse('home'))
+
+        self.assertContains(response, 'WhatsApp: 9083835446')
+        self.assertContains(response, 'https://wa.me/919083835446')
+        self.assertContains(response, 'mailto:deeproy.space@yahoo.com')
+
     def test_home_shows_rating_score_and_saved_wishlist_state(self):
         Review.objects.create(place=self.place, user=self.user, rating=4)
         self.place.rating = '4.0'
