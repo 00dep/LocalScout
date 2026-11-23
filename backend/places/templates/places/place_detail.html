@@ -136,13 +136,29 @@
     <!-- Map Section -->
     <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-4">
         <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider">Location Map & Directions</h3>
-        <div class="w-full h-64 sm:h-80 rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 flex items-center justify-center">
-            {% if place.latitude and place.longitude %}
-                <div class="text-xs text-slate-800 font-bold">Map coordinates: {{ place.latitude }}, {{ place.longitude }}</div>
+        <div class="w-full h-64 sm:h-80 rounded-2xl overflow-hidden bg-slate-50 border border-slate-200">
+            {% if place.latitude != None and place.longitude != None %}
+                <iframe
+                    title="Map showing {{ place.name }}"
+                    src="https://maps.google.com/maps?q={{ place.latitude }},{{ place.longitude }}&z=15&output=embed"
+                    class="w-full h-full border-0"
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"
+                ></iframe>
             {% else %}
-                <p class="text-xs text-slate-600 font-medium">Map location coordinates are not provided for this place.</p>
+                <div class="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
+                    <p class="text-xs text-slate-600 font-medium">Map coordinates are not provided for this place.</p>
+                    <a href="https://www.google.com/maps/search/?api=1&amp;query={{ place.address|urlencode }}" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition">
+                        Search address on Google Maps
+                    </a>
+                </div>
             {% endif %}
         </div>
+        {% if place.latitude != None and place.longitude != None %}
+        <a href="https://www.google.com/maps/dir/?api=1&amp;destination={{ place.latitude }},{{ place.longitude }}" target="_blank" rel="noopener noreferrer" class="inline-flex px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold rounded-xl transition">
+            Get Directions
+        </a>
+        {% endif %}
     </div>
 
     <!-- Menu & Special Items Section -->
@@ -151,8 +167,8 @@
             <h3 class="text-lg font-black text-slate-900">Menu & Special Items</h3>
             
             {% if user.is_authenticated and request.user == place.owner %}
-            <a href="#" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition shadow-sm">
-                <i class="fa-solid fa-plus mr-1.5"></i> Add Menu Item
+            <a href="{% url 'edit_place' place.pk %}#menu-management" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                <i class="fa-solid fa-pen-to-square mr-1.5" aria-hidden="true"></i> Manage Menu
             </a>
             {% endif %}
         </div>
@@ -175,6 +191,11 @@
                     <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md {% if item.is_available %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-rose-50 text-rose-700 border border-rose-200{% endif %}">
                         {% if item.is_available %}Available{% else %}Not Available{% endif %}
                     </span>
+                    {% if user.is_authenticated and request.user == place.owner %}
+                    <a href="{% url 'edit_place' place.pk %}#menu-management" class="inline-block ml-2 text-[10px] font-bold text-orange-600 hover:underline">
+                        Edit item
+                    </a>
+                    {% endif %}
                 </div>
             </div>
             {% empty %}

@@ -107,6 +107,75 @@
         </form>
     </div>
 
+    <section id="menu-management" class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm mb-10 space-y-8">
+        <div>
+            <h2 class="text-xl font-black text-slate-900">Manage Menu Items</h2>
+            <p class="mt-1 text-xs text-slate-500">Add new items or update existing names, descriptions, prices, and availability.</p>
+        </div>
+
+        <form method="POST" action="{% url 'add_menu_item' place.pk %}" class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-slate-100 pb-8">
+            {% csrf_token %}
+            <div class="space-y-1">
+                <label for="{{ menu_form.name.id_for_label }}" class="block text-xs font-bold text-slate-700">Item name</label>
+                {{ menu_form.name }}
+                {{ menu_form.name.errors }}
+            </div>
+            <div class="space-y-1">
+                <label for="{{ menu_form.price.id_for_label }}" class="block text-xs font-bold text-slate-700">Price</label>
+                {{ menu_form.price }}
+                {{ menu_form.price.errors }}
+            </div>
+            <div class="space-y-1">
+                <label for="{{ menu_form.description.id_for_label }}" class="block text-xs font-bold text-slate-700">Description</label>
+                {{ menu_form.description }}
+            </div>
+            <div class="flex items-center gap-3">
+                {{ menu_form.is_available }}
+                <label for="{{ menu_form.is_available.id_for_label }}" class="text-xs font-bold text-slate-700">Available</label>
+            </div>
+            <button type="submit" class="sm:col-span-2 justify-self-start px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl transition">
+                Add Menu Item
+            </button>
+        </form>
+
+        <div class="space-y-5">
+            {% for item in place.menu_items.all %}
+            <div class="rounded-2xl border border-slate-200 p-4 sm:p-5">
+                <form method="POST" action="{% url 'edit_menu_item' item.pk %}" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {% csrf_token %}
+                    <div class="space-y-1">
+                        <label for="menu-name-{{ item.pk }}" class="block text-xs font-bold text-slate-700">Item name</label>
+                        <input id="menu-name-{{ item.pk }}" name="name" type="text" value="{{ item.name }}" required maxlength="100" class="form-input">
+                    </div>
+                    <div class="space-y-1">
+                        <label for="menu-price-{{ item.pk }}" class="block text-xs font-bold text-slate-700">Price</label>
+                        <input id="menu-price-{{ item.pk }}" name="price" type="number" value="{{ item.price }}" min="0" step="0.01" required class="form-input">
+                    </div>
+                    <div class="space-y-1">
+                        <label for="menu-description-{{ item.pk }}" class="block text-xs font-bold text-slate-700">Description</label>
+                        <input id="menu-description-{{ item.pk }}" name="description" type="text" value="{{ item.description }}" class="form-input">
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input id="menu-available-{{ item.pk }}" name="is_available" type="checkbox" value="on" {% if item.is_available %}checked{% endif %} class="h-4 w-4">
+                        <label for="menu-available-{{ item.pk }}" class="text-xs font-bold text-slate-700">Available</label>
+                    </div>
+                    <button type="submit" class="justify-self-start px-5 py-2.5 bg-slate-900 hover:bg-orange-500 text-white text-xs font-bold rounded-xl transition">
+                        Save Item
+                    </button>
+                </form>
+                <form method="POST" action="{% url 'delete_menu_item' item.pk %}" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl transition">
+                        Delete Item
+                    </button>
+                </form>
+            </div>
+            {% empty %}
+            <p class="text-xs text-slate-500">No menu items have been added to this place yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
     <!-- Existing Gallery Images Section -->
     <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm mb-10">
         <h2 class="text-xl font-black text-slate-900 mb-4">Current Gallery Photos</h2>

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
-from .models import Place
+from .models import MenuItem, Place
 
 
 class UserRegistrationForm(forms.ModelForm):
@@ -53,4 +53,26 @@ class PlaceForm(forms.ModelForm):
             'price_range': forms.Select(attrs={'class': 'form-input'}),
             'latitude': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 23.8103'}),
             'longitude': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'e.g. 90.4125'}),
+        }
+
+
+class MenuItemForm(forms.ModelForm):
+    price = forms.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input',
+            'min': '0',
+            'step': '0.01',
+        }),
+    )
+
+    class Meta:
+        model = MenuItem
+        fields = ['name', 'description', 'price', 'is_available']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-input'}),
+            'description': forms.TextInput(attrs={'class': 'form-input'}),
+            'is_available': forms.CheckboxInput(attrs={'class': 'h-4 w-4'}),
         }

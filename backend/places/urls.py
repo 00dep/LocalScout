@@ -17,6 +17,7 @@ urlpatterns = [
     path('place/<int:pk>/edit/', views.edit_place, name='edit_place'),
     path('place/<int:pk>/delete/', views.delete_place, name='delete_place'),  # <--- এই লাইনটি যোগ করুন
     path('place/<int:pk>/add-menu/', views.add_menu_item, name='add_menu_item'),
+    path('menu-item/<int:item_id>/edit/', views.edit_menu_item, name='edit_menu_item'),
     path('menu-item/<int:item_id>/delete/', views.delete_menu_item, name='delete_menu_item'),
     path('gallery-image/<int:image_id>/delete/', views.delete_gallery_image, name='delete_gallery_image'),
 

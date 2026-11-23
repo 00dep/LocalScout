@@ -299,6 +299,86 @@ class LocalScoutTestSuite(TestCase):
         self.assertRedirects(response, reverse('place_list'))
         self.assertFalse(Place.objects.filter(pk=self.place.pk).exists())
 
+    def test_owner_can_edit_menu_item_from_place_management_page(self):
+        menu_item = MenuItem.objects.create(
+            place=self.place,
+            name='Old Item',
+            description='Old description',
+            price='50.00',
+            is_available=True,
+        )
+        self.client.login(username='testuser', password='testpassword123')
+
+        edit_page = self.client.get(reverse('edit_place', kwargs={'pk': self.place.pk}))
+        self.assertContains(edit_page, 'Manage Menu Items')
+        self.assertContains(edit_page, 'Old Item')
+
+        response = self.client.post(
+            reverse('edit_menu_item', kwargs={'item_id': menu_item.pk}),
+            {
+                'name': 'Updated Item',
+                'description': 'Updated description',
+                'price': '75.50',
+                'is_available': 'on',
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            f"{reverse('edit_place', kwargs={'pk': self.place.pk})}#menu-management",
+        )
+        menu_item.refresh_from_db()
+        self.assertEqual(menu_item.name, 'Updated Item')
+        self.assertEqual(menu_item.description, 'Updated description')
+        self.assertEqual(str(menu_item.price), '75.50')
+        self.assertTrue(menu_item.is_available)
+
+    def test_other_user_cannot_edit_menu_item(self):
+        menu_item = MenuItem.objects.create(
+            place=self.place,
+            name='Owner Item',
+            price='50.00',
+        )
+        other_user = User.objects.create_user(
+            username='otheruser',
+            email='other@example.com',
+            password='otherpassword123',
+        )
+        self.client.login(username=other_user.username, password='otherpassword123')
+
+        response = self.client.post(
+            reverse('edit_menu_item', kwargs={'item_id': menu_item.pk}),
+            {
+                'name': 'Changed by other user',
+                'description': '',
+                'price': '1.00',
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
+        menu_item.refresh_from_db()
+        self.assertEqual(menu_item.name, 'Owner Item')
+
+    def test_place_detail_shows_coordinate_map_and_directions(self):
+        self.place.latitude = 23.2081
+        self.place.longitude = 88.5732
+        self.place.save(update_fields=['latitude', 'longitude'])
+
+        response = self.client.get(
+            reverse('place_detail', kwargs={'pk': self.place.pk})
+        )
+
+        self.assertContains(response, 'https://maps.google.com/maps?q=23.2081,88.5732')
+        self.assertContains(response, 'Get Directions')
+        self.assertContains(response, 'destination=23.2081,88.5732')
+
+    def test_place_without_coordinates_links_to_address_search(self):
+        response = self.client.get(
+            reverse('place_detail', kwargs={'pk': self.place.pk})
+        )
+
+        self.assertContains(response, 'Search address on Google Maps')
+
     def test_profile_includes_user_role(self):
         profile = UserProfile.objects.create(user=self.user, role='owner')
         self.client.login(username='testuser', password='testpassword123')

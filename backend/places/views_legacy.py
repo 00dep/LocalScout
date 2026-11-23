@@ -4,6 +4,7 @@ from decimal import Decimal
 import resend
 from django.contrib.auth.hashers import check_password, make_password
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.db import IntegrityError, transaction
 from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
 from django.contrib import messages
@@ -21,7 +22,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import Place, Category, Review, UserProfile, PlaceImage, MenuItem
-from .forms import UserRegistrationForm, PlaceForm
+from .forms import MenuItemForm, UserRegistrationForm, PlaceForm
 from .services.otp_service import generate_otp
 
 logger = logging.getLogger(__name__)
@@ -499,7 +500,8 @@ def edit_place(request, pk):
         
     return render(request, 'places/edit_place.html', {
         'form': form, 
-        'place': place
+        'place': place,
+        'menu_form': MenuItemForm(initial={'is_available': True}),
     })
 
 
@@ -520,22 +522,36 @@ def delete_place(request, pk):
 @require_POST
 def add_menu_item(request, pk):
     place = get_object_or_404(Place, pk=pk, owner=request.user)
-    name = request.POST.get('name')
-    description = request.POST.get('description', '')
-    price = request.POST.get('price')
-
-    if name and price:
-        MenuItem.objects.create(
-            place=place,
-            name=name,
-            description=description,
-            price=price
-        )
+    form = MenuItemForm(request.POST)
+    if form.is_valid():
+        menu_item = form.save(commit=False)
+        menu_item.place = place
+        menu_item.save()
         messages.success(request, "Menu item added successfully!")
     else:
-        messages.error(request, "Please fill in all required fields.")
+        messages.error(request, "Please correct the menu item details.")
 
-    return redirect('edit_place', pk=place.pk)
+    return redirect(f"{reverse('edit_place', kwargs={'pk': place.pk})}#menu-management")
+
+
+@login_required
+@require_POST
+def edit_menu_item(request, item_id):
+    menu_item = get_object_or_404(
+        MenuItem,
+        pk=item_id,
+        place__owner=request.user,
+    )
+    form = MenuItemForm(request.POST, instance=menu_item)
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Menu item updated successfully.")
+    else:
+        messages.error(request, "Please correct the menu item details.")
+
+    return redirect(
+        f"{reverse('edit_place', kwargs={'pk': menu_item.place_id})}#menu-management"
+    )
 
 
 @login_required
