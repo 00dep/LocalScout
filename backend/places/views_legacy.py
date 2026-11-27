@@ -181,7 +181,11 @@ def verify_otp_view(request):
                     return redirect('signup')
 
                 request.session.pop('signup_data', None)
-                login(request, user)
+                login(
+                    request,
+                    user,
+                    backend='django.contrib.auth.backends.ModelBackend',
+                )
                 messages.success(request, "Account verified & created successfully!")
                 return redirect('home')
 
@@ -199,7 +203,11 @@ def login_view(request):
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
-            login(request, user)
+            login(
+                request,
+                user,
+                backend='django.contrib.auth.backends.ModelBackend',
+            )
             
             # 🔒 নিরাপদ রিডাইরেক্ট ভ্যালিডেশন
             next_url = request.POST.get('next') or request.GET.get('next')

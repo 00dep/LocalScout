@@ -9,6 +9,7 @@ from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from PIL import Image
+from .forms import UserRegistrationForm
 from .models import Place, Category, MenuItem, PlaceImage, Review, UserProfile
 
 class LocalScoutTestSuite(TestCase):
@@ -44,6 +45,25 @@ class LocalScoutTestSuite(TestCase):
     def test_signup_page_load(self):
         response = self.client.get(reverse('signup'))
         self.assertEqual(response.status_code, 200)
+
+    def test_registration_rejects_password_that_fails_configured_validators(self):
+        form = UserRegistrationForm(data={
+            'username': 'weakpassworduser',
+            'email': 'weak@example.com',
+            'password': '123456',
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('password', form.errors)
+
+    def test_registration_accepts_password_that_passes_configured_validators(self):
+        form = UserRegistrationForm(data={
+            'username': 'securepassworduser',
+            'email': 'secure@example.com',
+            'password': 'UniqueStrongPass!82',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_signup_without_resend_key_uses_development_otp(self):
         with self.settings(DEBUG=True, RESEND_API_KEY=''):
@@ -106,8 +126,7 @@ class LocalScoutTestSuite(TestCase):
 
     
     def test_login_and_logout(self):
-        login_success = self.client.login(username='testuser', password='testpassword123')
-        self.assertTrue(login_success)
+        self.client.force_login(self.user)
         
         response = self.client.get(reverse('logout'))
         self.assertEqual(response.status_code, 405)
@@ -125,7 +144,7 @@ class LocalScoutTestSuite(TestCase):
 
 
     def test_toggle_save_place(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
         response = self.client.post(reverse('toggle_save', kwargs={'pk': self.place.pk}))
         self.assertRedirects(
             response,
@@ -138,7 +157,7 @@ class LocalScoutTestSuite(TestCase):
         self.place.rating = '4.0'
         self.place.save(update_fields=['rating'])
         self.place.saved_by.add(self.user)
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(
             reverse('place_detail', kwargs={'pk': self.place.pk})
@@ -176,7 +195,7 @@ class LocalScoutTestSuite(TestCase):
         self.place.is_featured = True
         self.place.save(update_fields=['is_featured'])
         self.place.saved_by.add(self.user)
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(reverse('home'))
 
@@ -184,7 +203,7 @@ class LocalScoutTestSuite(TestCase):
         self.assertContains(response, 'Remove Test Cafe from wishlist')
 
     def test_home_wishlist_button_toggles_and_returns_home(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.post(
             reverse('toggle_save', kwargs={'pk': self.place.pk}),
@@ -195,7 +214,7 @@ class LocalScoutTestSuite(TestCase):
         self.assertTrue(self.place.saved_by.filter(pk=self.user.pk).exists())
 
     def test_remove_from_wishlist_returns_to_wishlist(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
         self.place.saved_by.add(self.user)
 
         response = self.client.post(
@@ -208,7 +227,7 @@ class LocalScoutTestSuite(TestCase):
         self.assertNotContains(self.client.get(reverse('wishlist')), self.place.name)
 
     def test_toggle_save_ignores_external_redirect_url(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.post(
             reverse('toggle_save', kwargs={'pk': self.place.pk}),
@@ -229,7 +248,7 @@ class LocalScoutTestSuite(TestCase):
             owner=self.user,
             is_approved=False,
         )
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.post(
             reverse('toggle_save', kwargs={'pk': pending_place.pk})
@@ -239,7 +258,7 @@ class LocalScoutTestSuite(TestCase):
         self.assertFalse(pending_place.saved_by.filter(pk=self.user.pk).exists())
 
     def test_rating_submission_updates_average_and_saves_comment(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.post(
             reverse('add_review', kwargs={'pk': self.place.pk}),
@@ -266,7 +285,7 @@ class LocalScoutTestSuite(TestCase):
         'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
     })
     def test_add_place_saves_gallery_images(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
         image_buffer = BytesIO()
         Image.new('RGB', (1, 1)).save(image_buffer, format='PNG')
         image_buffer.seek(0)
@@ -296,7 +315,7 @@ class LocalScoutTestSuite(TestCase):
         self.assertEqual(place.gallery_images.count(), 1)
 
     def test_delete_place_confirmation_page_loads_and_post_deletes(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
         url = reverse('delete_place', kwargs={'pk': self.place.pk})
 
         response = self.client.get(url)
@@ -306,6 +325,74 @@ class LocalScoutTestSuite(TestCase):
         self.assertRedirects(response, reverse('place_list'))
         self.assertFalse(Place.objects.filter(pk=self.place.pk).exists())
 
+    def test_other_user_cannot_delete_menu_item_or_gallery_image(self):
+        menu_item = MenuItem.objects.create(
+            place=self.place,
+            name='Owner Item',
+            price='50.00',
+        )
+        gallery_image = PlaceImage.objects.create(
+            place=self.place,
+            image='places/gallery/owner-image.jpg',
+        )
+        other_user = User.objects.create_user(
+            username='otheruser',
+            email='other@example.com',
+            password='otherpassword123',
+        )
+        self.client.force_login(other_user)
+
+        menu_response = self.client.post(
+            reverse('delete_menu_item', kwargs={'item_id': menu_item.pk})
+        )
+        gallery_response = self.client.post(
+            reverse('delete_gallery_image', kwargs={'image_id': gallery_image.pk})
+        )
+
+        self.assertEqual(menu_response.status_code, 404)
+        self.assertEqual(gallery_response.status_code, 404)
+        self.assertTrue(MenuItem.objects.filter(pk=menu_item.pk).exists())
+        self.assertTrue(PlaceImage.objects.filter(pk=gallery_image.pk).exists())
+
+    def test_owner_can_delete_menu_item_and_gallery_image(self):
+        menu_item = MenuItem.objects.create(
+            place=self.place,
+            name='Owner Item',
+            price='50.00',
+        )
+        gallery_image = PlaceImage.objects.create(
+            place=self.place,
+            image='places/gallery/owner-image.jpg',
+        )
+        self.client.force_login(self.user)
+
+        menu_response = self.client.post(
+            reverse('delete_menu_item', kwargs={'item_id': menu_item.pk})
+        )
+        gallery_response = self.client.post(
+            reverse('delete_gallery_image', kwargs={'image_id': gallery_image.pk})
+        )
+
+        self.assertRedirects(menu_response, reverse('edit_place', kwargs={'pk': self.place.pk}))
+        self.assertRedirects(gallery_response, reverse('edit_place', kwargs={'pk': self.place.pk}))
+        self.assertFalse(MenuItem.objects.filter(pk=menu_item.pk).exists())
+        self.assertFalse(PlaceImage.objects.filter(pk=gallery_image.pk).exists())
+
+    def test_login_is_locked_after_repeated_invalid_passwords(self):
+        login_url = reverse('login')
+        for _ in range(6):
+            response = self.client.post(
+                login_url,
+                {'username': 'testuser', 'password': 'incorrect-password'},
+            )
+
+        self.assertEqual(response.status_code, 429)
+        locked_response = self.client.post(
+            login_url,
+            {'username': 'testuser', 'password': 'testpassword123'},
+        )
+        self.assertEqual(locked_response.status_code, 429)
+
     def test_owner_can_edit_menu_item_from_place_management_page(self):
         menu_item = MenuItem.objects.create(
             place=self.place,
@@ -314,7 +401,7 @@ class LocalScoutTestSuite(TestCase):
             price='50.00',
             is_available=True,
         )
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         edit_page = self.client.get(reverse('edit_place', kwargs={'pk': self.place.pk}))
         self.assertContains(edit_page, 'Manage Menu Items')
@@ -351,7 +438,7 @@ class LocalScoutTestSuite(TestCase):
             email='other@example.com',
             password='otherpassword123',
         )
-        self.client.login(username=other_user.username, password='otherpassword123')
+        self.client.force_login(other_user)
 
         response = self.client.post(
             reverse('edit_menu_item', kwargs={'item_id': menu_item.pk}),
@@ -388,7 +475,7 @@ class LocalScoutTestSuite(TestCase):
 
     def test_profile_includes_user_role(self):
         profile = UserProfile.objects.create(user=self.user, role='owner')
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(reverse('profile'))
 
@@ -433,7 +520,7 @@ class LocalScoutTestSuite(TestCase):
             owner=self.user,
             is_approved=False,
         )
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(
             reverse('place_detail', kwargs={'pk': pending_place.pk})
@@ -474,7 +561,7 @@ class LocalScoutTestSuite(TestCase):
         self.assertContains(cafe_response, 'Menu & Special Items')
 
     def test_edit_page_menu_options_follow_selected_category(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
         edit_url = reverse('edit_place', kwargs={'pk': self.place.pk})
         response = self.client.get(edit_url)
         self.assertContains(response, 'data-menu-management')
@@ -491,7 +578,7 @@ class LocalScoutTestSuite(TestCase):
         self.assertContains(response, 'id="id_category"')
 
     def test_add_place_category_options_include_cafe_park_and_other(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(reverse('add_place'))
 
@@ -501,7 +588,7 @@ class LocalScoutTestSuite(TestCase):
         self.assertContains(response, 'Other')
 
     def test_owner_profile_has_share_link_for_approved_place(self):
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(reverse('profile'))
 
@@ -514,7 +601,7 @@ class LocalScoutTestSuite(TestCase):
     def test_owner_profile_explains_pending_place_share_restriction(self):
         self.place.is_approved = False
         self.place.save(update_fields=['is_approved'])
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(reverse('profile'))
 
@@ -527,7 +614,7 @@ class LocalScoutTestSuite(TestCase):
             name='Tea',
             price='10.00',
         )
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(
             reverse('delete_menu_item', kwargs={'item_id': item.pk})
@@ -541,7 +628,7 @@ class LocalScoutTestSuite(TestCase):
             place=self.place,
             image='places/gallery/test.jpg',
         )
-        self.client.login(username='testuser', password='testpassword123')
+        self.client.force_login(self.user)
 
         response = self.client.get(
             reverse('delete_gallery_image', kwargs={'image_id': image.pk})
