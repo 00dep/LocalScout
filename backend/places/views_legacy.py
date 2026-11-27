@@ -299,7 +299,11 @@ def google_login_callback(request):
         if created:
             UserProfile.objects.get_or_create(user=user, defaults={'role': 'customer'})
 
-        login(request, user)
+        login(
+            request,
+            user,
+            backend='django.contrib.auth.backends.ModelBackend',
+        )
 
     except ValueError:
         messages.error(request, "Google login failed.")

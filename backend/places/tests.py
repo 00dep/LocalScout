@@ -490,6 +490,26 @@ class LocalScoutTestSuite(TestCase):
 
         self.assertRedirects(response, reverse('login'))
 
+    @patch('places.views_legacy.id_token.verify_oauth2_token')
+    def test_google_login_works_with_multiple_authentication_backends(self, verify_token):
+        verify_token.return_value = {
+            'email': 'googleuser@example.com',
+            'given_name': 'Google',
+            'family_name': 'User',
+        }
+
+        with self.settings(GOOGLE_CLIENT_ID='test-client-id'):
+            response = self.client.post(
+                reverse('google_login_callback'),
+                {'credential': 'valid-token'},
+            )
+
+        self.assertRedirects(response, reverse('home'))
+        self.assertEqual(
+            int(self.client.session['_auth_user_id']),
+            User.objects.get(email='googleuser@example.com').pk,
+        )
+
     def test_user_cannot_create_duplicate_review_for_same_place(self):
         Review.objects.create(place=self.place, user=self.user, rating=4)
 
