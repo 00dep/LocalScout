@@ -65,9 +65,9 @@
         </a>
     </div>
 
-    <div class="flex flex-wrap justify-center gap-2">
+    <div class="flex flex-wrap justify-start gap-2.5">
         {% for category in categories %}
-        <a href="{% url 'place_list' %}?category={{ category.id }}" class="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-600 transition">
+        <a href="{% url 'place_list' %}?category={{ category.id }}" aria-label="Browse {{ category.name }} places" class="rounded-full border border-orange-100 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 transition">
             {{ category.name }}
         </a>
         {% empty %}
@@ -95,7 +95,7 @@
                 
                 <div class="relative h-52 w-full bg-slate-800 overflow-hidden">
                     {% if place.image %}
-                        <img src="{{ place.image.url }}" alt="{{ place.name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                        <img src="{{ place.image.url }}" alt="{{ place.name }}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                     {% else %}
                         <div class="w-full h-full flex items-center justify-center text-4xl text-slate-500 bg-slate-800">📍</div>
                     {% endif %}
@@ -161,18 +161,19 @@
         <a href="{% url 'place_list' %}" class="text-xs font-bold text-orange-600 hover:underline">Explore All &rarr;</a>
     </div>
 
-    <!-- City / Location Filter Tabs -->
-    {% if cities %}
-    <div class="flex flex-wrap gap-2 mb-8">
-        <a href="{% url 'home' %}" class="px-4 py-2 rounded-xl text-xs font-bold {% if not selected_location %}bg-orange-500 text-white shadow-md{% else %}bg-white border border-slate-200 text-slate-700 hover:border-orange-400{% endif %} transition">
-            All Cities
-        </a>
-        {% for city in cities %}
-        <a href="{% url 'home' %}?location={{ city }}" class="px-4 py-2 rounded-xl text-xs font-bold {% if selected_location == city %}bg-orange-500 text-white shadow-md{% else %}bg-white border border-slate-200 text-slate-700 hover:border-orange-400{% endif %} transition">
-            📍 {{ city }}
-        </a>
-        {% endfor %}
-    </div>
+    {% if stations %}
+    <form method="get" action="{% url 'home' %}" class="flex flex-col sm:flex-row gap-2 mb-8 max-w-xl">
+        {% if request.GET.q %}<input type="hidden" name="q" value="{{ request.GET.q }}">{% endif %}
+        {% if request.GET.category %}<input type="hidden" name="category" value="{{ request.GET.category }}">{% endif %}
+        <label for="station-filter" class="sr-only">Filter by Nadia location</label>
+        <select id="station-filter" name="location" class="w-full sm:max-w-sm px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-400">
+            <option value="" {% if not selected_location %}selected{% endif %}>All Locations</option>
+            {% for station in stations %}
+            <option value="{{ station }}" {% if selected_location == station %}selected{% endif %}>{{ station }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition">Filter</button>
+    </form>
     {% endif %}
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -180,7 +181,7 @@
         <article class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition duration-200 flex flex-col overflow-hidden">
             <div class="relative h-44 w-full bg-slate-200 overflow-hidden">
                 {% if place.image %}
-                    <img src="{{ place.image.url }}" alt="{{ place.name }}" class="w-full h-full object-cover">
+                    <img src="{{ place.image.url }}" alt="{{ place.name }}" loading="lazy" decoding="async" class="w-full h-full object-cover">
                 {% else %}
                     <div class="w-full h-full flex items-center justify-center text-3xl text-slate-400">📍</div>
                 {% endif %}
@@ -226,5 +227,22 @@
         <p class="col-span-full text-center text-xs text-slate-400 py-12">No new places available for this location yet.</p>
         {% endfor %}
     </div>
+
+    {% if places.has_other_pages %}
+    <nav class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4" aria-label="Recently added places pagination">
+        <p class="text-xs text-slate-500">
+            Showing {{ places.start_index }}–{{ places.end_index }} of {{ places.paginator.count }} places
+        </p>
+        <div class="flex items-center gap-2">
+            {% if places.has_previous %}
+            <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ places.previous_page_number }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:border-orange-400 hover:text-orange-600 transition">Previous</a>
+            {% endif %}
+            <span class="text-xs text-slate-500">Page {{ places.number }} of {{ places.paginator.num_pages }}</span>
+            {% if places.has_next %}
+            <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ places.next_page_number }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:border-orange-400 hover:text-orange-600 transition">Next</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
 </section>
 {% endblock %}

@@ -6,9 +6,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 
 from places.models import Place, Category, PlaceImage, MenuItem
+from places.constants import NADIA_LOCATION_FILTERS
 from places.forms import PlaceForm
-
-CITIES = ['Ranaghat', 'Krishnanagar', 'Kalyani']
 
 def home(request):
     places = Place.objects.filter(is_approved=True).select_related('category').order_by("-created_at")
@@ -26,7 +25,7 @@ def home(request):
         "places": places,
         "featured": Place.objects.filter(is_featured=True, is_approved=True).select_related('category').order_by("-created_at")[:6],
         "categories": Category.objects.all(),
-        "cities": CITIES,
+        "stations": NADIA_LOCATION_FILTERS,
         "selected_location": location_name,
     }
     return render(request, "places/home.html", context)
@@ -51,7 +50,7 @@ def place_list(request):
         "categories": categories,
         "current_category": current_category,
         "selected_location": location_name,
-        "cities": CITIES,
+        "stations": NADIA_LOCATION_FILTERS,
     })
 
 def place_detail(request, pk):

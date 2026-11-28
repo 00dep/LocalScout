@@ -9,6 +9,7 @@ from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from PIL import Image
+from .constants import NADIA_LOCATION_FILTERS
 from .forms import UserRegistrationForm
 from .models import Place, Category, MenuItem, PlaceImage, Review, UserProfile
 
@@ -142,6 +143,44 @@ class LocalScoutTestSuite(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Test Cafe')
 
+    def test_home_and_places_list_paginate_filtered_results(self):
+        for index in range(12):
+            Place.objects.create(
+                name=f'Extra Place {index}',
+                address='Ranaghat',
+                location='Ranaghat',
+                category=self.category,
+                owner=self.user,
+                is_approved=True,
+            )
+
+        for url in (reverse('home'), reverse('place_list')):
+            first_page = self.client.get(url, {'location': 'Ranaghat'})
+            second_page = self.client.get(url, {'location': 'Ranaghat', 'page': '2'})
+
+            self.assertEqual(len(first_page.context['places']), 12)
+            self.assertEqual(first_page.context['places'].paginator.count, 13)
+            self.assertEqual(len(second_page.context['places']), 1)
+            self.assertEqual(second_page.context['pagination_query'], 'location=Ranaghat')
+
+    def test_home_location_filter_lists_selected_nadia_areas_and_matches_exactly(self):
+        station_place = Place.objects.create(
+            name='Badkulla Cafe',
+            address='Badkulla',
+            location='Badkulla',
+            category=self.category,
+            owner=self.user,
+            is_approved=True,
+        )
+
+        response = self.client.get(reverse('home'), {'location': 'Badkulla'})
+
+        self.assertEqual(len(NADIA_LOCATION_FILTERS), 7)
+        self.assertEqual(response.context['stations'], NADIA_LOCATION_FILTERS)
+        self.assertEqual(list(response.context['places'].object_list), [station_place])
+        self.assertContains(response, '<option value="Badkulla" selected>')
+        self.assertContains(response, 'All Locations')
+
 
     def test_toggle_save_place(self):
         self.client.force_login(self.user)
@@ -258,6 +297,12 @@ class LocalScoutTestSuite(TestCase):
         self.assertFalse(pending_place.saved_by.filter(pk=self.user.pk).exists())
 
     def test_rating_submission_updates_average_and_saves_comment(self):
+        other_user = User.objects.create_user(
+            username='reviewer',
+            email='reviewer@example.com',
+            password='reviewerpassword123',
+        )
+        Review.objects.create(place=self.place, user=other_user, rating=2)
         self.client.force_login(self.user)
 
         response = self.client.post(
@@ -271,7 +316,7 @@ class LocalScoutTestSuite(TestCase):
         )
         self.place.refresh_from_db()
         review = Review.objects.get(place=self.place, user=self.user)
-        self.assertEqual(str(self.place.rating), '4.0')
+        self.assertEqual(str(self.place.rating), '3.0')
         self.assertEqual(review.comment, 'A lovely place')
 
  

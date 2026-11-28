@@ -3,10 +3,11 @@ from datetime import timedelta
 from decimal import Decimal
 import resend
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.paginator import Paginator
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.db import IntegrityError, transaction
-from django.db.models import BooleanField, Count, Exists, OuterRef, Q, Value
+from django.db.models import Avg, BooleanField, Count, Exists, OuterRef, Q, Value
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
@@ -22,15 +23,13 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .models import Place, Category, Review, UserProfile, PlaceImage, MenuItem
+from .constants import NADIA_LOCATION_FILTERS
 from .forms import MenuItemForm, UserRegistrationForm, PlaceForm
 from .services.otp_service import generate_otp
 
 logger = logging.getLogger(__name__)
 OTP_MAX_ATTEMPTS = 5
-
-# 📍 City List
-CITIES = ['Ranaghat', 'Krishnanagar', 'Kalyani']
-
+PLACES_PER_PAGE = 12
 
 @api_view(['GET'])
 def api_search_places(request):
@@ -342,17 +341,21 @@ def home(request):
         places = places.filter(location__iexact=location_name.strip())
 
     places = _annotate_home_place_state(places, request.user)
+    places = Paginator(places, PLACES_PER_PAGE).get_page(request.GET.get('page'))
     featured = Place.objects.filter(
         is_featured=True,
         is_approved=True,
     ).select_related('category').order_by("-created_at")
     featured = _annotate_home_place_state(featured, request.user)[:6]
 
+    pagination_query = request.GET.copy()
+    pagination_query.pop('page', None)
     context = {
         "places": places,
+        "pagination_query": pagination_query.urlencode(),
         "featured": featured,
         "categories": Category.objects.all(),
-        "cities": CITIES,
+        "stations": NADIA_LOCATION_FILTERS,
         "selected_location": location_name,
     }
     return render(request, "places/home.html", context)
@@ -392,12 +395,17 @@ def place_list(request):
     if location_name:
         places = places.filter(location__iexact=location_name.strip())
 
+    places = Paginator(places, PLACES_PER_PAGE).get_page(request.GET.get('page'))
+    pagination_query = request.GET.copy()
+    pagination_query.pop('page', None)
+
     return render(request, "places/place_list.html", {
         "places": places,
+        "pagination_query": pagination_query.urlencode(),
         "categories": categories,
         "current_category": current_category,
         "selected_location": location_name,
-        "cities": CITIES,
+        "stations": NADIA_LOCATION_FILTERS,
     })
 
 
@@ -450,13 +458,10 @@ def add_review(request, pk):
         comment=request.POST.get("comment", "").strip()
     )
 
-    all_reviews = place.reviews.all()
-    count = all_reviews.count()
-
-    if count > 0:
-        avg_val = sum(r.rating for r in all_reviews) / count
+    avg_val = place.reviews.aggregate(average=Avg('rating'))['average']
+    if avg_val is not None:
         place.rating = Decimal(str(round(avg_val, 1)))
-        place.save()
+        place.save(update_fields=['rating'])
 
     messages.success(request, "Thank you for rating this place!")
     return redirect("place_detail", pk=pk)
