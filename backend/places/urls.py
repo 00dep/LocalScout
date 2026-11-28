@@ -10,6 +10,9 @@ urlpatterns = [
     path('store-pending/', views.store_pending, name='store_pending'),
     path('wishlist/', views.wishlist, name='wishlist'),
     path('profile/', views.profile_view, name='profile'),
+    path('privacy/', views.privacy_policy, name='privacy'),
+    path('terms/', views.terms_of_use, name='terms'),
+    path('help/requests/', views.support_requests, name='support_requests'),
 
     # Actions (Review, Save, Edit, Delete, Menu & Gallery)
     path('place/<int:pk>/review/', views.add_review, name='add_review'),

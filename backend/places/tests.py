@@ -41,11 +41,24 @@ class LocalScoutTestSuite(TestCase):
                 'username': username,
                 'email': email,
                 'password': 'testpassword123',
+                'accept_terms': 'on',
             })
     
     def test_signup_page_load(self):
         response = self.client.get(reverse('signup'))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse('privacy'))
+        self.assertContains(response, reverse('terms'))
+
+    def test_privacy_terms_and_support_pages_are_available(self):
+        for route_name in ('privacy', 'terms', 'support_requests'):
+            response = self.client.get(reverse(route_name))
+            self.assertEqual(response.status_code, 200)
+
+        self.assertContains(
+            self.client.get(reverse('support_requests')),
+            'deeproy.space@yahoo.com',
+        )
 
     def test_registration_rejects_password_that_fails_configured_validators(self):
         form = UserRegistrationForm(data={
@@ -62,9 +75,20 @@ class LocalScoutTestSuite(TestCase):
             'username': 'securepassworduser',
             'email': 'secure@example.com',
             'password': 'UniqueStrongPass!82',
+            'accept_terms': 'on',
         })
 
         self.assertTrue(form.is_valid(), form.errors)
+
+    def test_registration_requires_terms_acceptance(self):
+        form = UserRegistrationForm(data={
+            'username': 'termsuser',
+            'email': 'terms@example.com',
+            'password': 'UniqueStrongPass!82',
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('accept_terms', form.errors)
 
     def test_signup_without_resend_key_uses_development_otp(self):
         with self.settings(DEBUG=True, RESEND_API_KEY=''):

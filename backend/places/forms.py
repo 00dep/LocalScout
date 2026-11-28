@@ -6,6 +6,7 @@ from .models import MenuItem, Place
 
 class UserRegistrationForm(forms.ModelForm):
     email = forms.EmailField(required=True)
+    accept_terms = forms.BooleanField(required=True)
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={'placeholder': 'Choose a strong password'}),
         min_length=6,

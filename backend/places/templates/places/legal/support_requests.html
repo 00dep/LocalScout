@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Requests & Reports | LocalScout{% endblock %}
+
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm space-y-7">
+        <header class="space-y-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-orange-600">Help</p>
+            <h1 class="text-3xl font-black text-slate-900">Requests &amp; Reports</h1>
+            <p class="text-sm leading-6 text-slate-600">
+                These requests are currently handled by email, not automatically. We may contact you to verify a request.
+            </p>
+        </header>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+            <article class="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3">
+                <h2 class="text-lg font-extrabold text-slate-900">Account or data request</h2>
+                <p class="text-sm leading-6 text-slate-600">
+                    Ask to correct or delete account information. Include your LocalScout username and account email.
+                    Do not send your password or OTP.
+                </p>
+                <a href="mailto:deeproy.space@yahoo.com?subject=LocalScout%20Account%20or%20Data%20Request" class="inline-flex rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white hover:bg-orange-600 transition">
+                    Email a data request
+                </a>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-3">
+                <h2 class="text-lg font-extrabold text-slate-900">Report a listing, photo or review</h2>
+                <p class="text-sm leading-6 text-slate-600">
+                    Send the page link and a short explanation. If you own the business or photo, say so and explain
+                    what should be reviewed.
+                </p>
+                <a href="mailto:deeproy.space@yahoo.com?subject=LocalScout%20Content%20Report" class="inline-flex rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-orange-500 transition">
+                    Email a report
+                </a>
+            </article>
+        </div>
+
+        <p class="text-xs leading-5 text-slate-500">
+            You can also contact LocalScout at
+            <a class="font-semibold text-orange-600 hover:underline" href="mailto:deeproy.space@yahoo.com">deeproy.space@yahoo.com</a>.
+            Please do not email passwords, OTP codes, payment details or identity documents.
+        </p>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Terms of Use | LocalScout{% endblock %}
+
+{% block content %}
+<article class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm space-y-7">
+        <header class="space-y-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-orange-600">Legal</p>
+            <h1 class="text-3xl font-black text-slate-900">Terms of Use</h1>
+            <p class="text-xs text-slate-500">Last updated: November 28, 2026</p>
+        </header>
+
+        <p class="text-sm leading-6 text-slate-700">
+            By creating an account or using LocalScout, you agree to these terms. If you do not agree, please do not
+            create an account or submit content.
+        </p>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">Using LocalScout</h2>
+            <p class="text-sm leading-6 text-slate-700">
+                LocalScout helps people discover local places through listings and community reviews. It does not
+                operate the listed businesses or make bookings or purchases for them. Check opening hours, prices,
+                services and other details directly with a business before visiting.
+            </p>
+        </section>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">Accounts and submissions</h2>
+            <p class="text-sm leading-6 text-slate-700">
+                Keep your account details accurate and your password private. You are responsible for information,
+                reviews and photos you submit. Only upload content you have permission to share, and do not post
+                private personal information, false reviews, unlawful content, harassment or spam.
+            </p>
+            <p class="text-sm leading-6 text-slate-700">
+                New place listings are reviewed before appearing publicly. Changes to an approved listing may need
+                review again. By submitting content, you allow LocalScout to store and display it as needed to provide
+                the service. Approved listing details and reviews may be visible to the public.
+            </p>
+        </section>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">Accuracy and reports</h2>
+            <p class="text-sm leading-6 text-slate-700">
+                Listings and reviews may be submitted by users and can change over time. LocalScout cannot guarantee
+                that every detail, review, opening hour, price or business service is current or accurate. A listing
+                does not guarantee visits, customers or sales. You can report a problem or request removal through the
+                <a href="{% url 'support_requests' %}" class="font-semibold text-orange-600 hover:underline">Requests &amp; Reports page</a>.
+            </p>
+        </section>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">Changes and contact</h2>
+            <p class="text-sm leading-6 text-slate-700">
+                We may update these terms as the service changes. Continued use after an update means you accept the
+                revised terms. For questions, email
+                <a class="font-semibold text-orange-600 hover:underline" href="mailto:deeproy.space@yahoo.com">deeproy.space@yahoo.com</a>.
+            </p>
+        </section>
+    </div>
+</article>
+{% endblock %}

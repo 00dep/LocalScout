@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Privacy Policy | LocalScout{% endblock %}
+
+{% block content %}
+<article class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-sm space-y-7">
+        <header class="space-y-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-orange-600">Legal</p>
+            <h1 class="text-3xl font-black text-slate-900">Privacy Policy</h1>
+            <p class="text-xs text-slate-500">Last updated: November 28, 2026</p>
+        </header>
+
+        <p class="text-sm leading-6 text-slate-700">
+            This policy explains how LocalScout handles information when you use the website. For privacy
+            questions or requests, email <a class="font-semibold text-orange-600 hover:underline" href="mailto:deeproy.space@yahoo.com">deeproy.space@yahoo.com</a>.
+        </p>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">Information we handle</h2>
+            <ul class="list-disc pl-5 text-sm leading-6 text-slate-700 space-y-1">
+                <li>Account details such as your username and email address. Passwords are stored as protected password hashes, not readable text.</li>
+                <li>Information you submit about a place, such as its name, address, location, contact details, opening hours, description, menu and photos.</li>
+                <li>Reviews, ratings and saved places linked to your account. Reviews may show your username publicly.</li>
+                <li>Basic session and security information, which may include IP address and browser details to help protect accounts and operate the service.</li>
+            </ul>
+        </section>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">How information is used and shown</h2>
+            <p class="text-sm leading-6 text-slate-700">
+                We use information to create and secure accounts, verify email addresses, display approved place listings,
+                show reviews and saved places, and respond to support requests. Approved business details and photos,
+                and reviews with usernames, can be visible to website visitors. Do not submit passwords, OTP codes,
+                financial details or private information in a listing or review.
+            </p>
+        </section>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">Service providers and cookies</h2>
+            <p class="text-sm leading-6 text-slate-700">
+                LocalScout uses service providers to run parts of the site. Resend is used to send account verification
+                email, Cloudinary may store uploaded images, and Google services may be used for sign-in or maps.
+                The website is hosted by Render. These providers handle information under their own terms and privacy
+                practices. The site also uses essential session and security cookies.
+            </p>
+        </section>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">Storage, security and your requests</h2>
+            <p class="text-sm leading-6 text-slate-700">
+                We keep information while it is needed to operate the service, protect it, or meet legal requirements.
+                No online service can promise perfect security. Account or data deletion is not automatic: contact us
+                through the <a href="{% url 'support_requests' %}" class="font-semibold text-orange-600 hover:underline">Requests &amp; Reports page</a>.
+                We may ask for information to verify your request and may need to retain some records for security or
+                legal reasons.
+            </p>
+        </section>
+
+        <section class="space-y-2">
+            <h2 class="text-lg font-extrabold text-slate-900">Changes</h2>
+            <p class="text-sm leading-6 text-slate-700">
+                We may update this policy when the website or its data practices change. The updated date at the top
+                of this page will change when we revise it.
+            </p>
+        </section>
+    </div>
+</article>
+{% endblock %}
